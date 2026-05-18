@@ -1,0 +1,31 @@
+### Upload image
+
+POST http://localhost:8081/upload
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="foto.png"
+Content-Type: image/png
+
+< ../samples/foto.png
+--boundary--
+
+### List images
+
+GET http://localhost:3000/api/files
+
+### Storage Buckets
+
+GET http://localhost:4443/storage/v1/b
+
+### Storage Objects Uploads
+
+GET http://localhost:4443/storage/v1/b/uploads/o
+
+### Storage Objects Thumbnails
+
+GET http://localhost:4443/storage/v1/b/thumbnails/o
+
+### Storage Objects Analysis Results
+
+GET http://localhost:4443/storage/v1/b/analysis-results/o

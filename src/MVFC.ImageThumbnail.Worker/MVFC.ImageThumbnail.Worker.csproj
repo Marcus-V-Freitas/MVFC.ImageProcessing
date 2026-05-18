@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.PubSub.V1" />
+    <PackageReference Include="Google.Cloud.Storage.V1" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MVFC.Image.Shareable\MVFC.Image.Shareable.csproj" />
+  </ItemGroup>
+
+</Project>

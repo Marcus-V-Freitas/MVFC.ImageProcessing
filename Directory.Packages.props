@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="MVFC.Pack.Testing" Version="4.0.0" />
+    <PackageVersion Include="MVFC.Pack.Analyzers" Version="4.0.0" />
+    <PackageVersion Include="Google.Cloud.Storage.V1" Version="4.14.0" />
+    <PackageVersion Include="Google.Cloud.PubSub.V1" Version="3.34.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.13.1" />
+    <PackageVersion Include="Refit.HttpClientFactory" Version="10.1.6" />
+  </ItemGroup>
+</Project>

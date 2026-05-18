@@ -1,0 +1,17 @@
+# .NET
+**/bin/
+**/obj/
+
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate*
+terraform/tfplan
+terraform/.terraform.lock.hcl
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# Test artifacts
+samples/

@@ -1,0 +1,109 @@
+services:
+
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: pubsub
+    command: >
+      gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+
+  gcs:
+    image: fsouza/fake-gcs-server:latest
+    container_name: gcs
+    command: >
+      -scheme http -public-host gcs:4443
+    ports:
+      - "4443:4443"
+
+  mvfc-image-vision-api:
+    build:
+      context: ./src/MVFC.ImageVision.Api
+    container_name: mvfc-image-vision-api
+    ports:
+      - "5000:5000"
+
+  mvfc-image-upload-api:
+    build:
+      context: .
+      dockerfile: ./src/MVFC.ImageUpload.Api/Dockerfile
+    container_name: mvfc-image-upload-api
+    environment:
+      - PUBSUB_EMULATOR_HOST
+      - STORAGE_EMULATOR_HOST
+    ports:
+      - "8081:8080"
+    depends_on:
+      - pubsub
+      - gcs
+
+  mvfc-image-thumbnail-worker:
+    build:
+      context: .
+      dockerfile: ./src/MVFC.ImageThumbnail.Worker/Dockerfile
+    container_name: mvfc-image-thumbnail-worker
+    environment:
+      - PUBSUB_EMULATOR_HOST
+      - STORAGE_EMULATOR_HOST
+    ports:
+      - "8082:8080"
+    depends_on:
+      - pubsub
+      - gcs
+
+  mvfc-image-analysis-worker:
+    build:
+      context: .
+      dockerfile: ./src/MVFC.ImageAnalysis.Worker/Dockerfile
+    container_name: mvfc-image-analysis-worker
+    environment:
+      - PUBSUB_EMULATOR_HOST
+      - STORAGE_EMULATOR_HOST
+      - VISION_API_URL
+    ports:
+      - "8083:8080"
+    depends_on:
+      - pubsub
+      - gcs
+      - mvfc-image-vision-api
+
+  mvfc-image-delete-worker:
+    build:
+      context: .
+      dockerfile: ./src/MVFC.ImageDelete.Worker/Dockerfile
+    container_name: mvfc-image-delete-worker
+    environment:
+      - PUBSUB_EMULATOR_HOST
+      - STORAGE_EMULATOR_HOST
+    ports:
+      - "8086:8080"
+    depends_on:
+      - pubsub
+      - gcs
+
+  mvfc-image-converter-worker:
+    build:
+      context: .
+      dockerfile: ./src/MVFC.ImageConverter.Worker/Dockerfile
+    container_name: mvfc-image-converter-worker
+    environment:
+      - PUBSUB_EMULATOR_HOST
+      - STORAGE_EMULATOR_HOST
+    ports:
+      - "8084:8080"
+    depends_on:
+      - pubsub
+      - gcs
+
+  mvfc-image-dashboard-ui:
+    build:
+      context: .
+      dockerfile: ./src/MVFC.ImageDashboard.UI/Dockerfile
+    container_name: mvfc-image-dashboard-ui
+    environment:
+      - PUBSUB_EMULATOR_HOST
+      - STORAGE_EMULATOR_HOST
+    ports:
+      - "3000:8080"
+    depends_on:
+      - gcs

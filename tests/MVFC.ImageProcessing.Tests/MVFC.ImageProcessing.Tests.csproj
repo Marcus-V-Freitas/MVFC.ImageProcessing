@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="MVFC.Pack.Testing" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Processing Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MVFC Media Intelligence</h1>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem;">Upload images and watch the magic happen in real-time</p>
+        </header>
+
+        <div class="upload-section" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <span class="upload-icon">✨</span>
+            <h2>Drag & drop an image here</h2>
+            <p style="color: var(--text-secondary)">or click to browse</p>
+            <input type="file" id="fileInput" hidden accept="image/*">
+        </div>
+
+        <div class="gallery-grid" id="gallery">
+            <!-- Cards will be generated here -->
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
