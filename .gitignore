@@ -370,8 +370,18 @@ FodyWeavers.xsd
 mailpit.db*
 
 # Terraform
+.terraform/
 *.tfstate
 *.tfstate.*
-.terraform/
-.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+*.tfplan
 tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+.terraform.workdir.tfstate
+.terraformrc
+terraform.rc
