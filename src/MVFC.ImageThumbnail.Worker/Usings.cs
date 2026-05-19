@@ -1,10 +1,12 @@
 global using System.Text;
 global using System.Text.Json;
-global using MVFC.Image.Shareable.Requests;
+global using FluentResults;
 global using Google.Api.Gax;
-global using Google.Cloud.Storage.V1;
-global using ImageMagick;
 global using Google.Cloud.PubSub.V1;
+global using Google.Cloud.Storage.V1;
 global using Google.Protobuf;
-global using MVFC.ImageThumbnail.Worker.Services;
+global using ImageMagick;
+global using MVFC.Image.IoC;
+global using MVFC.Image.Shareable.Requests;
+global using MVFC.Mediator;
 global using Encoding = System.Text.Encoding;

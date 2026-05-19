@@ -30,4 +30,13 @@ public sealed class StorageService(StorageClient storageClient) : IStorageServic
             // Ignore
         }
     }
+
+    public async Task<IReadOnlyList<string>> ListObjectsAsync(string bucketName, string prefix, CancellationToken cancellationToken)
+    {
+        var objects = new List<string>();
+        await foreach (var obj in _storageClient.ListObjectsAsync(bucketName, prefix).WithCancellation(cancellationToken))
+            objects.Add(obj.Name);
+
+        return objects;
+    }
 }

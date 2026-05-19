@@ -1,12 +1,9 @@
 namespace MVFC.Image.Shareable.Requests;
 
-public sealed class PubSubMessageRequest
+public sealed record PubSubMessageRequest(
+    string Data,
+    string MessageId,
+    string PublishTime)
 {
-    public string Data { get; set; } = string.Empty;
-
-    public string MessageId { get; set; } = string.Empty;
-
-    public string PublishTime { get; set; } = string.Empty;
-
-    public IDictionary<string, string>? Attributes { get; set; }
+    public IDictionary<string, string>? Attributes { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }

@@ -1,35 +1,20 @@
 var builder = WebApplication.CreateBuilder(args);
-
-var storage = await new StorageClientBuilder
-{
-    EmulatorDetection = EmulatorDetection.EmulatorOrProduction
-}.BuildAsync();
-
-var deletePublisher = await new PublisherClientBuilder
-{
-    EmulatorDetection = EmulatorDetection.EmulatorOrProduction,
-    TopicName = TopicName.FromProjectTopic("local-project", "file-delete-requested-topic")
-}.BuildAsync();
-
-builder.Services.AddSingleton(storage);
-builder.Services.AddSingleton(deletePublisher);
-builder.Services.AddScoped<FileGalleryService>();
-builder.Services.AddScoped<FileDeletePublisher>();
+await builder.Services.RegisterDashboardServicesAsync(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/api/files", async (FileGalleryService gallery) =>
+app.MapGet("/api/files", async (IMediator mediator, CancellationToken cancellationToken) =>
 {
-    var result = await gallery.ListFilesAsync();
-    return Results.Ok(result);
+    var result = await mediator.Send<FileGalleryRequest, Result<FileGalleryResponse>>(new(), cancellationToken);
+    return Results.Ok(result.Value);
 });
 
-app.MapPost("/api/delete/{fileName}", async (string fileName, FileDeletePublisher publisher) =>
+app.MapPost("/api/delete/{fileName}", async (string fileName, IMediator mediator, CancellationToken cancellationToken) =>
 {
-    await publisher.RequestDeleteAsync(fileName);
+    await mediator.Send<FileDeletePublisherRequest, Result>(new(fileName), cancellationToken);
     return Results.Accepted();
 });
 

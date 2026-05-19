@@ -5,4 +5,11 @@ public sealed record FileUploadedRequest(
     string ContentType,
     long Size,
     string Bucket,
-    DateTime UploadedAt) : ICommand<Result>;
+    DateTime UploadedAt)
+    : FileBaseRequest(
+        FileName,
+        ContentType,
+        Size,
+        Bucket,
+        UploadedAt),
+    ICommand<Result>;

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.0] - 2026-05-19
+
+### Added
+
+- **Architecture**: Migrated `MVFC.ImageThumbnail.Worker` and `MVFC.ImageDashboard.UI` to Clean Architecture and CQRS pattern using `MVFC.Mediator`.
+- **Architecture**: Created `ImageThumbnailHandler`, `ImageGalleryHandler`, and `ImageDeletePublisherHandler` to handle thumbnail generation, gallery queries, and deletion event publication.
+- **Domain**: Expanded `IStorageService` contract with `ListObjectsAsync` method and implemented it in `StorageService`.
+- **IoC**: Added `AppThumbnailDependencies` and `AppDashboardDependencies` to encapsulate dependency injection registration for the Thumbnail worker and Dashboard UI.
+- **Configuration**: Introduced `AppConfigThumbnail` and `AppConfigDashboard` configurations to manage settings for the Thumbnail worker and Dashboard UI.
+- **Domain**: Added `FileBaseRequest` base record and new requests/responses (`FileThumbnailRequest`, `FileGalleryRequest`, `FileDeletePublisherRequest`, `FileGalleryResponse`).
+
+### Changed
+
+- **Domain**: Refactored request and event models (`FileConvertedRequest`, `FileDeleteRequest`, `FileUploadRequest`, `FileUploadedRequest`, `PubSubRequest`, `PubSubMessageRequest`) into records.
+- **Infrastructure**: Updated Dockerfiles for `MVFC.ImageThumbnail.Worker` and `MVFC.ImageDashboard.UI` to include Clean Architecture project references (`Domain`, `Infra`, `IoC`).
+- **Dashboard / Worker**: Configured `Program.cs` and `appsettings.json` in both the worker and UI projects to run via the new Mediator setup and structured configurations.
+
+### Removed
+
+- Removed legacy services `ThumbnailService.cs` from `MVFC.ImageThumbnail.Worker`.
+- Removed legacy services `FileDeletePublisher.cs` and `FileGalleryService.cs` from `MVFC.ImageDashboard.UI`.
+
+---
+
 ## [2.1.0] - 2026-05-18
 
 ### Added
@@ -73,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.2.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.2.0
 [2.1.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.0.0
 [1.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v1.0.0

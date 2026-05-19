@@ -1,6 +1,6 @@
 namespace MVFC.Image.Shareable.Requests;
 
-public sealed record FileConvertedRequest(
+public sealed record FileThumbnailRequest(
     string FileName,
     string ContentType,
     long Size,
