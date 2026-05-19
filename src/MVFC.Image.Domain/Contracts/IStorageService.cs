@@ -6,5 +6,5 @@ public interface IStorageService
 
     Task<string> UploadImageAsync(string bucketName, string objectName, string contentType, byte[] bytes, CancellationToken cancellationToken);
 
-    Task<string> UploadImageAsync(string bucketName, string objectName, string contentType, MagickImage image, CancellationToken cancellationToken);
+    Task DeleteImageAsync(string bucketName, string objectName, CancellationToken cancellationToken);
 }

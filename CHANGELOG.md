@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-05-18
+
+### Added
+
+- **Architecture**: Migrated `MVFC.ImageDelete.Worker` to Clean Architecture and CQRS pattern using `MVFC.Mediator`.
+- **Architecture**: Created `ImageDeleteHandler` to handle cascading deletions, replacing the legacy delete service.
+- **Domain**: Expanded `IStorageService` contract with `DeleteImageAsync` method and implemented it in `StorageService`.
+- **IoC**: Added `AppDeleteDependencies` to encapsulate dependency injection registration for the Delete worker.
+
+### Changed
+
+- **Domain**: Refactored `FileDeleteRequest` into a strongly-typed record implementing `ICommand<Result>`.
+- **Dashboard**: Updated `FileDeletePublisher` in UI to align with the new `FileDeleteRequest` record constructor.
+- **Infrastructure**: Updated `MVFC.ImageDelete.Worker` `Dockerfile` to include Clean Architecture project references (`Domain`, `Infra`, `IoC`).
+
+### Removed
+
+- Removed legacy fat service `DeleteService.cs`.
+
+---
+
 ## [2.0.0] - 2026-05-18
 
 ### Added
@@ -52,5 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.1.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.0.0
 [1.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v1.0.0

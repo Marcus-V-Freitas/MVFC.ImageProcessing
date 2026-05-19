@@ -1,6 +1,3 @@
 namespace MVFC.Image.Shareable.Requests;
 
-public sealed class FileDeleteRequest
-{
-    public string FileName { get; init; } = "";
-}
+public sealed record FileDeleteRequest(string FileName) : ICommand<Result>;

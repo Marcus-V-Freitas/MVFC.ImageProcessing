@@ -4,11 +4,17 @@ WORKDIR /src
 
 COPY Directory.* .editorconfig ./
 COPY src/MVFC.Image.Shareable/*.csproj src/MVFC.Image.Shareable/
+COPY src/MVFC.Image.Domain/*.csproj src/MVFC.Image.Domain/
+COPY src/MVFC.Image.Infra/*.csproj src/MVFC.Image.Infra/
+COPY src/MVFC.Image.IoC/*.csproj src/MVFC.Image.IoC/
 COPY src/MVFC.ImageDelete.Worker/*.csproj src/MVFC.ImageDelete.Worker/
 
 RUN dotnet restore ./src/MVFC.ImageDelete.Worker/MVFC.ImageDelete.Worker.csproj
 
 COPY src/MVFC.Image.Shareable/ src/MVFC.Image.Shareable/
+COPY src/MVFC.Image.Domain/ src/MVFC.Image.Domain/
+COPY src/MVFC.Image.Infra/ src/MVFC.Image.Infra/
+COPY src/MVFC.Image.IoC/ src/MVFC.Image.IoC/
 COPY src/MVFC.ImageDelete.Worker/ src/MVFC.ImageDelete.Worker/
 
 RUN dotnet publish \

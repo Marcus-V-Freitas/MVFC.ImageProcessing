@@ -19,13 +19,15 @@ public sealed class StorageService(StorageClient storageClient) : IStorageServic
         return objectName;
     }
 
-    public async Task<string> UploadImageAsync(string bucketName, string objectName, string contentType, MagickImage image, CancellationToken cancellationToken)
+    public async Task DeleteImageAsync(string bucketName, string objectName, CancellationToken cancellationToken)
     {
-        await using var stream = new MemoryStream();
-        await image.WriteAsync(stream, cancellationToken);
-        stream.Position = 0;
-
-        await _storageClient.UploadObjectAsync(bucketName, objectName, contentType, stream, cancellationToken: cancellationToken);
-        return objectName;
+        try
+        {
+            await _storageClient.DeleteObjectAsync(bucketName, objectName, cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            // Ignore
+        }
     }
 }
