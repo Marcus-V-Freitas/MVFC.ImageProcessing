@@ -1,0 +1,10 @@
+global using System.Collections.Concurrent;
+global using System.Text.Json;
+global using Google.Api.Gax;
+global using Google.Cloud.PubSub.V1;
+global using Google.Cloud.Storage.V1;
+global using Google.Protobuf;
+global using ImageMagick;
+global using Microsoft.Extensions.DependencyInjection;
+global using MVFC.Image.Domain.Contracts;
+global using MVFC.Image.Shareable.Configs;

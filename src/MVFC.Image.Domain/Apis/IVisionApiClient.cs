@@ -1,4 +1,4 @@
-namespace MVFC.ImageAnalysis.Worker.Services;
+namespace MVFC.Image.Domain.Apis;
 
 public interface IVisionApiClient
 {

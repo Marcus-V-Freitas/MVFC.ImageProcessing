@@ -59,7 +59,7 @@ services:
     environment:
       - PUBSUB_EMULATOR_HOST
       - STORAGE_EMULATOR_HOST
-      - VISION_API_URL
+      - VisualApiUrl
     ports:
       - "8083:8080"
     depends_on:

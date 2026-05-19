@@ -1,0 +1,9 @@
+global using System.Text;
+global using FluentResults;
+global using ImageMagick;
+global using MVFC.Image.Domain.Apis;
+global using MVFC.Image.Domain.Contracts;
+global using MVFC.Image.Shareable.Configs;
+global using MVFC.Image.Shareable.Requests;
+global using MVFC.Mediator;
+global using Refit;

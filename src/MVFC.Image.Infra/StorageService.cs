@@ -1,0 +1,31 @@
+﻿namespace MVFC.Image.Infra;
+
+public sealed class StorageService(StorageClient storageClient) : IStorageService
+{
+    private readonly StorageClient _storageClient = storageClient;
+
+    public async Task<MemoryStream> DownloadImageAsync(string bucketName, string objectName, CancellationToken cancellationToken)
+    {
+        var stream = new MemoryStream();
+        await _storageClient.DownloadObjectAsync(bucketName, objectName, stream, cancellationToken: cancellationToken);
+        stream.Position = 0;
+        return stream;
+    }
+
+    public async Task<string> UploadImageAsync(string bucketName, string objectName, string contentType, byte[] bytes, CancellationToken cancellationToken)
+    {
+        await using var stream = new MemoryStream(bytes);
+        await _storageClient.UploadObjectAsync(bucketName, objectName, contentType, stream, cancellationToken: cancellationToken);
+        return objectName;
+    }
+
+    public async Task<string> UploadImageAsync(string bucketName, string objectName, string contentType, MagickImage image, CancellationToken cancellationToken)
+    {
+        await using var stream = new MemoryStream();
+        await image.WriteAsync(stream, cancellationToken);
+        stream.Position = 0;
+
+        await _storageClient.UploadObjectAsync(bucketName, objectName, contentType, stream, cancellationToken: cancellationToken);
+        return objectName;
+    }
+}

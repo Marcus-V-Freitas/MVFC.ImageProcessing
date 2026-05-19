@@ -1,29 +1,21 @@
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors();
 
-var publisher = await new PublisherClientBuilder
-{
-    EmulatorDetection = EmulatorDetection.EmulatorOrProduction,
-    TopicName = TopicName.FromProjectTopic("local-project", "file-uploaded-topic")
-}.BuildAsync();
-
-var storage = await new StorageClientBuilder
-{
-    EmulatorDetection = EmulatorDetection.EmulatorOrProduction
-}.BuildAsync();
-
-builder.Services.AddSingleton(publisher);
-builder.Services.AddSingleton(storage);
-builder.Services.AddScoped<UploadService>();
+await builder.Services.RegisterUploadServicesAsync(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
-app.MapPost("/upload", async (IFormFile file, UploadService service, CancellationToken ct) =>
+app.MapPost("/upload", async (IFormFile file, IMediator mediator, CancellationToken ct) =>
 {
-    var fileName = await service.UploadAsync(file, ct);
-    return Results.Accepted(fileName);
+    var request = new FileUploadRequest(file.FileName, file.ContentType, file.Length, await file.ToByteArrayAsync());
+    var result = await mediator.Send<FileUploadRequest, Result<string>>(request, ct);
+
+    return result.IsSuccess
+        ? Results.Accepted(result.Value)
+        : Results.UnprocessableEntity(result.Errors);
+
 }).DisableAntiforgery();
 
 app.MapGet("/", () => "mvfc-image-upload-api ok");

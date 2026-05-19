@@ -2,9 +2,14 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 
 WORKDIR /src
 
-COPY . .
+COPY Directory.* .editorconfig ./
+COPY src/MVFC.Image.Shareable/*.csproj src/MVFC.Image.Shareable/
+COPY src/MVFC.ImageDelete.Worker/*.csproj src/MVFC.ImageDelete.Worker/
 
 RUN dotnet restore ./src/MVFC.ImageDelete.Worker/MVFC.ImageDelete.Worker.csproj
+
+COPY src/MVFC.Image.Shareable/ src/MVFC.Image.Shareable/
+COPY src/MVFC.ImageDelete.Worker/ src/MVFC.ImageDelete.Worker/
 
 RUN dotnet publish \
     ./src/MVFC.ImageDelete.Worker/MVFC.ImageDelete.Worker.csproj \

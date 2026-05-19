@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Storage.V1" />
+    <PackageReference Include="Google.Cloud.PubSub.V1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MVFC.Image.Domain\MVFC.Image.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

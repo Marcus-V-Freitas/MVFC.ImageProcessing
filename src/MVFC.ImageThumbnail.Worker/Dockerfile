@@ -2,9 +2,14 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 
 WORKDIR /src
 
-COPY . .
+COPY Directory.* .editorconfig ./
+COPY src/MVFC.Image.Shareable/*.csproj src/MVFC.Image.Shareable/
+COPY src/MVFC.ImageThumbnail.Worker/*.csproj src/MVFC.ImageThumbnail.Worker/
 
 RUN dotnet restore ./src/MVFC.ImageThumbnail.Worker/MVFC.ImageThumbnail.Worker.csproj
+
+COPY src/MVFC.Image.Shareable/ src/MVFC.Image.Shareable/
+COPY src/MVFC.ImageThumbnail.Worker/ src/MVFC.ImageThumbnail.Worker/
 
 RUN dotnet publish \
     ./src/MVFC.ImageThumbnail.Worker/MVFC.ImageThumbnail.Worker.csproj \

@@ -49,10 +49,10 @@ cd MVFC.ImageProcessing
 
 The `start.sh` script performs the following steps in order:
 
-1. Tears down any existing containers
-2. Builds and starts all services via `docker compose up -d --build`
+1. Checks for existing infrastructure (use `./scripts/start.sh --clean` to force a full tear down)
+2. Builds and starts or updates all services via `docker compose up -d --build`
 3. Waits for PubSub, GCS, and Vision API health checks
-4. Runs `terraform init && terraform apply` to create topics, subscriptions, and buckets
+4. Runs `terraform init && terraform apply` to ensure topics, subscriptions, and buckets exist
 
 After startup, open the **Dashboard** at [http://localhost:3000](http://localhost:3000).
 
@@ -81,7 +81,7 @@ graph LR
     API -->|"Pub: file-uploaded"| PS{{"PubSub"}}
     PS -->|Push| CONV["mvfc-image-converter-worker :8084"]
     CONV -->|"Download + Normalize PNG"| GCS
-    CONV -->|"Pub: file-normalized"| PS
+    CONV -->|"Pub: file-converted"| PS
     PS -->|Push| TW["mvfc-image-thumbnail-worker :8082"]
     TW -->|"Download + Generate thumbnail"| GCS
     TW -->|"Pub: thumbnail-created"| PS
@@ -144,7 +144,7 @@ sequenceDiagram
     CONV->>GCS: Download uploads/{guid}-photo.avif
     CONV->>CONV: MagickImage → Format = PNG
     CONV->>GCS: Overwrites uploads/{guid}-photo.avif (now PNG)
-    CONV->>PS: Pub "file-normalized-topic"
+    CONV->>PS: Pub "file-converted-topic"
 
     Note over PS,TW: ② Thumbnail
 
@@ -215,7 +215,7 @@ sequenceDiagram
         CONV->>CONV: new MagickImage(stream)
         CONV->>CONV: image.Format = MagickFormat.Png
         CONV->>GCS: Overwrites same file as PNG
-        CONV->>PS: Pub "file-normalized-topic" ✅
+        CONV->>PS: Pub "file-converted-topic" ✅
     else Corrupted or invalid file
         CONV->>CONV: catch(Exception)
         CONV->>CONV: Log critical error
@@ -234,7 +234,7 @@ Each arrow represents a Pub/Sub topic with its respective push subscription.
 ```mermaid
 graph TD
     T1["file-uploaded-topic"] -->|mvfc-image-converter-worker-sub| CONV["mvfc-image-converter-worker"]
-    CONV --> T2["file-normalized-topic"]
+    CONV --> T2["file-converted-topic"]
     T2 -->|mvfc-image-thumbnail-worker-sub| TW["mvfc-image-thumbnail-worker"]
     TW --> T3["thumbnail-created-topic"]
     T3 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
@@ -244,7 +244,7 @@ graph TD
 | Topic | Producer | Consumer | Ack Deadline |
 |---|---|---|---|
 | `file-uploaded-topic` | mvfc-image-upload-api | mvfc-image-converter-worker | 60s |
-| `file-normalized-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker | 600s |
+| `file-converted-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker | 600s |
 | `thumbnail-created-topic` | mvfc-image-thumbnail-worker | mvfc-image-analysis-worker | 600s |
 | `file-delete-requested-topic` | mvfc-image-dashboard-ui | mvfc-image-delete-worker | 30s |
 
@@ -331,12 +331,15 @@ You can also use the HTTP file at `scripts/mvfc.image-processing.http` for manua
 ```
 MVFC.ImageProcessing/
 ├── src/
+│   ├── MVFC.Image.Domain/                 # Core business logic, Contracts and CQRS Handlers
+│   ├── MVFC.Image.Infra/                  # GCP Implementations (Storage and Pub/Sub)
+│   ├── MVFC.Image.IoC/                    # Dependency Injection and Configuration
 │   ├── MVFC.Image.Shareable/              # Shared events and DTOs
 │   ├── MVFC.ImageUpload.Api/              # Receives uploads via HTTP
 │   ├── MVFC.ImageConverter.Worker/        # Normalizes any format → PNG
 │   ├── MVFC.ImageThumbnail.Worker/        # Generates 200×200 thumbnails
 │   ├── MVFC.ImageAnalysis.Worker/         # Orchestrates AI analysis (Refit)
-│   ├── MVFC.ImageVision.Api/             # BLIP model (Python/Flask)
+│   ├── MVFC.ImageVision.Api/              # BLIP model (Python/Flask)
 │   ├── MVFC.ImageDelete.Worker/           # Deletes files from 3 buckets
 │   └── MVFC.ImageDashboard.UI/            # Web interface (HTML/JS)
 ├── tests/

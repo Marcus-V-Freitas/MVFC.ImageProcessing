@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-05-18
+
+### Added
+
+- **Architecture**: Introduced Clean Architecture principles by creating `MVFC.Image.Domain`, `MVFC.Image.Infra`, and `MVFC.Image.IoC` projects.
+- **Architecture**: Adopted the CQRS pattern using `MVFC.Mediator`, replacing fat services with dedicated handlers (`ImageUploadHandler`, `ImageConverterHandler`, `ImageAnalysisHandler`).
+- **Domain**: Created `IStorageService` and `IPublishService` contracts to abstract away Google Cloud dependencies from the core domain logic.
+- **Events**: Added `FileConvertedRequest` event to better separate concerns between upload and conversion stages.
+
+### Changed
+
+- **Infrastructure**: Optimized all C# `Dockerfile`s to use multi-stage `COPY` strategies with explicit project references, significantly improving Docker build caching and speeding up local development.
+- **Infrastructure**: Refactored `scripts/start.sh` to preserve container and Terraform state by default, introducing a `--clean` flag for when a full environment reset is needed.
+- **Domain**: Refactored terminology across the board, renaming "Normalize" references to "Converter" (e.g., `AppNormalizedDependencies` to `AppConverterDependencies`).
+- **Configuration**: Centralized configuration management by extracting `AppConfigAnalysis`, `AppConfigConverter`, `AppConfigUpload`, and a unified `PubSubConfig`.
+- **Infrastructure**: Renamed Pub/Sub topic `file-normalized-topic` to `file-converted-topic`.
+- **Codebase**: Centralized global usings across the new layers via `Usings.cs` files.
+
+### Removed
+
+- Removed legacy fat services (`UploadService`, `ImageNormalizerService`, `ImageAnalysisService`) in favor of the new CQRS Handlers.
+
+### Fixed
+
+- Fixed `MA0004` (ConfigureAwait) analyzer errors breaking Docker builds by correctly including `.editorconfig` in the Docker build context.
+
+---
 ## [1.0.0] - 2026-05-17
 
 ### Added
@@ -25,4 +52,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.0.0
 [1.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v1.0.0

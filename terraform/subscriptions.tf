@@ -10,7 +10,7 @@ resource "google_pubsub_subscription" "image_converter_sub" {
 
 resource "google_pubsub_subscription" "push_sub" {
   name                 = "mvfc-image-thumbnail-worker-sub"
-  topic                = google_pubsub_topic.file_normalized_topic.name
+  topic                = google_pubsub_topic.file_converted_topic.name
   ack_deadline_seconds = 600
 
   push_config {
