@@ -1,6 +1,6 @@
 namespace MVFC.Image.Domain.Handlers;
 
-public sealed class ImageDeleteHandler(IStorageService storage) : ICommandHandler<FileDeleteRequest, Result>
+public sealed class ImageDeleteHandler(IStorageService storage, StorageConfig storageConfig) : ICommandHandler<FileDeleteRequest, Result>
 {
     public async ValueTask<Result> Handle(FileDeleteRequest request, CancellationToken cancellationToken = default)
     {
@@ -8,9 +8,9 @@ public sealed class ImageDeleteHandler(IStorageService storage) : ICommandHandle
         var thumbName = $"thumb-{request.FileName}";
         var tasks = new List<Task>
         {
-            storage.DeleteImageAsync("uploads", request.FileName, cancellationToken: cancellationToken),
-            storage.DeleteImageAsync("thumbnails", thumbName, cancellationToken: cancellationToken),
-            storage.DeleteImageAsync("analysis-results", analysisName, cancellationToken: cancellationToken),
+            storage.DeleteImageAsync(storageConfig.UploadBucket, request.FileName, cancellationToken: cancellationToken),
+            storage.DeleteImageAsync(storageConfig.ThumbnailBucket, thumbName, cancellationToken: cancellationToken),
+            storage.DeleteImageAsync(storageConfig.AnalysisBucket, analysisName, cancellationToken: cancellationToken),
         };
 
         await Task.WhenAll(tasks);

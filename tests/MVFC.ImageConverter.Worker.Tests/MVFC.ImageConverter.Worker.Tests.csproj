@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <NoWarn>$(NoWarn);CA1707;xUnit1051;CA2201;CA1873</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MVFC.Pack.Testing" />
+    <PackageReference Include="MVFC.Mediator" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MVFC.Image.Domain\MVFC.Image.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MVFC.Image.Shareable\MVFC.Image.Shareable.csproj" />
+    <ProjectReference Include="..\..\src\MVFC.ImageConverter.Worker\MVFC.ImageConverter.Worker.csproj" />
+  </ItemGroup>
+
+</Project>

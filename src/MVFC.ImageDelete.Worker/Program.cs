@@ -1,17 +1,32 @@
+
 var builder = WebApplication.CreateBuilder(args);
-await builder.Services.RegisterDeleteServicesAsync();
+await builder.Services.RegisterDeleteServicesAsync(builder.Configuration);
 
 var app = builder.Build();
 
-app.MapPost("/pubsub/push", async (PubSubRequest request, IMediator mediator, CancellationToken ct) =>
+app.MapPost("/pubsub/push", async (
+    PubSubRequest request,
+    IMediator mediator,
+    ILogger<Program> logger,
+    CancellationToken ct) =>
 {
-    var bytes = Convert.FromBase64String(request.Message.Data);
-    var json = Encoding.UTF8.GetString(bytes);
-    var evt = JsonSerializer.Deserialize<FileDeleteRequest>(json)!;
+    if (string.IsNullOrWhiteSpace(request.Message?.Data))
+        return Results.BadRequest("Payload vazio.");
 
-    await mediator.Send<FileDeleteRequest, Result>(evt, ct);
+    var json = Encoding.UTF8.GetString(Convert.FromBase64String(request.Message.Data));
+    var evt = JsonSerializer.Deserialize<FileDeleteRequest>(json);
 
-    return Results.Ok();
+    if (evt is null)
+    {
+        logger.LogWarningInvalidPayload(request.Message.Data);
+        return Results.BadRequest("Deserialização falhou.");
+    }
+
+    var result = await mediator.Send<FileDeleteRequest, Result>(evt, ct);
+
+    return result.IsSuccess
+        ? Results.Ok()
+        : Results.UnprocessableEntity(result.Errors);
 });
 
 app.MapGet("/", () => "mvfc-image-delete-worker ok");

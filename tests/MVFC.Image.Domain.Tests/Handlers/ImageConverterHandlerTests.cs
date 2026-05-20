@@ -1,0 +1,78 @@
+namespace MVFC.Image.Domain.Tests.Handlers;
+
+public sealed class ImageConverterHandlerTests
+{
+    private readonly IStorageService _storage = Substitute.For<IStorageService>();
+    private readonly IPublishService _publisher = Substitute.For<IPublishService>();
+    private readonly ILogger<ImageConverterHandler> _logger = Substitute.For<ILogger<ImageConverterHandler>>();
+    private readonly AppConfigConverter _config = new(
+        new PubSubConfig("proj-test", new Dictionary<string, string> { ["FileConvertTopic"] = "file-converted" }),
+        new StorageConfig("uploads", "thumbnails", "analysis-results"));
+
+    private static readonly byte[] ValidImageBytes =
+    [
+        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 
+        0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 
+        0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 
+        0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3B
+    ];
+
+    [Fact]
+    public async Task Handle_SuccessPath_ShouldConvertImageToPngAndPublishEvent()
+    {
+        // Arrange
+        var handler = new ImageConverterHandler(_storage, _publisher, _config, _logger);
+        var request = new FileUploadedRequest("foto.jpg", "image/jpeg", ValidImageBytes.Length, "uploads", DateTime.UtcNow);
+
+        var originalStream = new MemoryStream(ValidImageBytes);
+        _storage.DownloadImageAsync("uploads", "foto.jpg", default)
+                .Returns(Task.FromResult(originalStream));
+
+        // Act
+        var result = await handler.Handle(request);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        
+        await _storage.Received(1).DownloadImageAsync("uploads", "foto.jpg", default);
+        
+        await _storage.Received(1).UploadImageAsync(
+            "uploads",
+            "foto.jpg",
+            "image/png",
+            Arg.Is<byte[]>(b => b != null && b.Length > 0),
+            default);
+
+        await _publisher.Received(1).PublishAsync(
+            Arg.Is<FileUploadedRequest>(r => r.FileName == "foto.jpg" && r.ContentType == "image/png" && r.Bucket == "uploads"),
+            "file-converted",
+            Arg.Is<IReadOnlyDictionary<string, string>>(d => d["event-type"] == "file.png.converted"));
+    }
+
+    [Fact]
+    public async Task Handle_InvalidImageFormat_ShouldLogErrorAndReturnFail()
+    {
+        // Arrange
+        var handler = new ImageConverterHandler(_storage, _publisher, _config, _logger);
+        var request = new FileUploadedRequest("bad.jpg", "image/jpeg", 4, "uploads", DateTime.UtcNow);
+
+        // Invalid image bytes will cause MagickImage to throw an exception
+        var badStream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+        _storage.DownloadImageAsync("uploads", "bad.jpg", default)
+                .Returns(Task.FromResult(badStream));
+
+        // Act
+        var result = await handler.Handle(request);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+
+        _logger.ReceivedCalls().Should().NotBeEmpty();
+
+        await _publisher.DidNotReceive().PublishAsync(
+            Arg.Any<FileUploadedRequest>(),
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>());
+    }
+}

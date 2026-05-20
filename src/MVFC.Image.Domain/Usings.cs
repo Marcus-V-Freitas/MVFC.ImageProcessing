@@ -8,3 +8,5 @@ global using MVFC.Image.Shareable.Requests;
 global using MVFC.Image.Shareable.Response;
 global using MVFC.Mediator;
 global using Refit;
+global using Microsoft.Extensions.Logging;
+global using MVFC.Image.Shareable.Extensions;

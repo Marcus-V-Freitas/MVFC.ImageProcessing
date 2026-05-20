@@ -9,9 +9,9 @@ public sealed class ImageUploadHandler(
     {
         var fileName = $"{Guid.NewGuid()}-{request.FileName}";
 
-        await storage.UploadImageAsync("uploads", fileName, request.ContentType, request.Data, cancellationToken: cancellationToken);
+        await storage.UploadImageAsync(appConfig.StorageConfig.UploadBucket, fileName, request.ContentType, request.Data, cancellationToken: cancellationToken);
 
-        var evt = new FileUploadedRequest(fileName, request.ContentType, request.Length, "uploads", DateTime.UtcNow);
+        var evt = new FileUploadedRequest(fileName, request.ContentType, request.Length, appConfig.StorageConfig.UploadBucket, DateTime.UtcNow);
         var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "event-type", "file.uploaded" },

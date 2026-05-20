@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.0] - 2026-05-19
+
+### Added
+
+- **Testing**: Achieved **100% Code Coverage** (Line and Branch) across the entire domain and shareable library.
+- **Testing**: Achieved **100% Line Coverage** for all worker and API `Program.cs` entry points.
+- **Testing**: Separated unit tests into `MVFC.Image.Domain.Tests` and `MVFC.Image.Shareable.Tests` to mirror the source project structure cleanly.
+- **Testing**: Created integration test projects for every worker and API (`MVFC.ImageAnalysis.Worker.Tests`, `MVFC.ImageConverter.Worker.Tests`, etc.) resolving configuration and DI cleanly.
+
+### Changed
+
+- **Code Quality**: Replaced `#pragma warning disable CA2012` hacks with global `.editorconfig` rules.
+- **Infrastructure**: Updated `docker-compose.yml` fake-gcs-server healthcheck to use Alpine's native `wget` instead of `curl`.
+
+---
+
 ## [2.2.0] - 2026-05-19
 
 ### Added

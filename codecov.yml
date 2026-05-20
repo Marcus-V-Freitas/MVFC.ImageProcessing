@@ -1,0 +1,16 @@
+codecov:
+  branch: main
+
+ignore:
+  - "tests/**"
+  - "playground/**"
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto

@@ -4,4 +4,10 @@
     <ProjectReference Include="..\MVFC.Image.IoC\MVFC.Image.IoC.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>MVFC.ImageDelete.Worker.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

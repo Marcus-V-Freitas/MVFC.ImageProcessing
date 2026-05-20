@@ -1,3 +1,3 @@
 namespace MVFC.Image.Shareable.Configs;
 
-public sealed record AppConfigThumbnail(PubSubConfig PubSubConfig);
+public sealed record AppConfigThumbnail(PubSubConfig PubSubConfig, StorageConfig StorageConfig);

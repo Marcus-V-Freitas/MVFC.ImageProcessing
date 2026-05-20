@@ -10,3 +10,5 @@ global using MVFC.Image.Shareable.Requests;
 global using MVFC.ImageUpload.Api.Extensions;
 global using MVFC.Mediator;
 global using Encoding = System.Text.Encoding;
+global using FluentValidation;
+global using MVFC.Image.Shareable.Validators;

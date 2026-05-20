@@ -1,9 +1,11 @@
+
 namespace MVFC.Image.Domain.Handlers;
 
 public sealed class ImageConverterHandler(
     IStorageService storage,
     IPublishService publisher,
-    AppConfigConverter appConfig) : ICommandHandler<FileUploadedRequest, Result>
+    AppConfigConverter appConfig,
+    ILogger<ImageConverterHandler> logger) : ICommandHandler<FileUploadedRequest, Result>
 {
     public async ValueTask<Result> Handle(FileUploadedRequest request, CancellationToken cancellationToken = default)
     {
@@ -36,7 +38,7 @@ public sealed class ImageConverterHandler(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro crítico ao tentar converter {request.FileName}. Erro: {ex.Message}");
+            logger.LogErrorConvert(ex, request.FileName);
             return Result.Fail(ex.Message);
         }
     }

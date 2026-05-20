@@ -7,6 +7,11 @@ services:
       gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
     ports:
       - "8085:8085"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   gcs:
     image: fsouza/fake-gcs-server:latest
@@ -15,6 +20,11 @@ services:
       -scheme http -public-host gcs:4443
     ports:
       - "4443:4443"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4443/storage/v1/b"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   mvfc-image-vision-api:
     build:
@@ -34,8 +44,10 @@ services:
     ports:
       - "8081:8080"
     depends_on:
-      - pubsub
-      - gcs
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
 
   mvfc-image-thumbnail-worker:
     build:
@@ -48,8 +60,10 @@ services:
     ports:
       - "8082:8080"
     depends_on:
-      - pubsub
-      - gcs
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
 
   mvfc-image-analysis-worker:
     build:
@@ -63,9 +77,12 @@ services:
     ports:
       - "8083:8080"
     depends_on:
-      - pubsub
-      - gcs
-      - mvfc-image-vision-api
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
+      mvfc-image-vision-api:
+        condition: service_started
 
   mvfc-image-delete-worker:
     build:
@@ -78,8 +95,10 @@ services:
     ports:
       - "8086:8080"
     depends_on:
-      - pubsub
-      - gcs
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
 
   mvfc-image-converter-worker:
     build:
@@ -92,8 +111,10 @@ services:
     ports:
       - "8084:8080"
     depends_on:
-      - pubsub
-      - gcs
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
 
   mvfc-image-dashboard-ui:
     build:

@@ -16,11 +16,11 @@ public sealed class ImageThumbnailHandler(
         var bytes = image.ToByteArray();
 
         var thumbName = $"thumb-{request.FileName}";
-        await storage.UploadImageAsync("thumbnails", thumbName, "image/png", bytes, cancellationToken: cancellationToken);
+        await storage.UploadImageAsync(appConfig.StorageConfig.ThumbnailBucket, thumbName, "image/png", bytes, cancellationToken: cancellationToken);
 
         var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "event-type", "thumbnail-created" }
+            { "event-type", "thumbnail-created" },
         };
 
         await publisher.PublishAsync(request, appConfig.PubSubConfig.Topics["ThumbnailCreatedTopic"], attributes);

@@ -11,6 +11,13 @@
     <Project Path="src/MVFC.ImageUpload.Api/MVFC.ImageUpload.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/MVFC.ImageProcessing.Tests/MVFC.ImageProcessing.Tests.csproj" />
+    <Project Path="tests/MVFC.Image.Domain.Tests/MVFC.Image.Domain.Tests.csproj" />
+    <Project Path="tests/MVFC.Image.Shareable.Tests/MVFC.Image.Shareable.Tests.csproj" />
+    <Project Path="tests/MVFC.ImageAnalysis.Worker.Tests/MVFC.ImageAnalysis.Worker.Tests.csproj" />
+    <Project Path="tests/MVFC.ImageConverter.Worker.Tests/MVFC.ImageConverter.Worker.Tests.csproj" />
+    <Project Path="tests/MVFC.ImageDelete.Worker.Tests/MVFC.ImageDelete.Worker.Tests.csproj" />
+    <Project Path="tests/MVFC.ImageThumbnail.Worker.Tests/MVFC.ImageThumbnail.Worker.Tests.csproj" />
+    <Project Path="tests/MVFC.ImageUpload.Api.Tests/MVFC.ImageUpload.Api.Tests.csproj" />
+    <Project Path="tests/MVFC.ImageDashboard.UI.Tests/MVFC.ImageDashboard.UI.Tests.csproj" />
   </Folder>
 </Solution>
