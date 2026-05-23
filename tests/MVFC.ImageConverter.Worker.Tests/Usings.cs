@@ -21,3 +21,4 @@ global using FluentResults;
 global using System.Net.Http;
 global using System.Text.Json;
 global using Microsoft.AspNetCore.Http;
+global using Microsoft.Extensions.Hosting;

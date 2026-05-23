@@ -4,9 +4,9 @@ public static class AppConverterDependencies
 {
     public static async Task RegisterConverterServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
-        var appConfig = configuration.Get<AppConfigConverter>() ?? throw new InvalidOperationException("Converter configuration section is missing.");
+        var appConfig = configuration.GetRequiredConfig<AppConfigConverter>();
 
-        services.AddMediator(typeof(IDomainEntrypoint).Assembly, typeof(IShareableEntrypoint).Assembly);
+        services.AddMediatorSpecificHandlers(typeof(ImageConverterHandler));
         services.AddSingleton(appConfig);
         services.AddSingleton(appConfig.PubSubConfig);
         await services.AddStorageServiceDependenciesAsync();

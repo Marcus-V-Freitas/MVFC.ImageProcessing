@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MVFC.Image.Shareable\MVFC.Image.Shareable.csproj" />
+    <ProjectReference Include="..\..\src\MVFC.Image.Infra\MVFC.Image.Infra.csproj" />
   </ItemGroup>
 
 </Project>

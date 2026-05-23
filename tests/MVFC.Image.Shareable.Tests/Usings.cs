@@ -12,3 +12,4 @@ global using MVFC.Image.Shareable.Response;
 global using MVFC.Image.Shareable.Validators;
 global using NSubstitute;
 global using Xunit;
+global using Microsoft.Extensions.Configuration;

@@ -4,9 +4,9 @@ public static class AppDashboardDependencies
 {
     public static async Task RegisterDashboardServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
-        var appConfig = configuration.Get<AppConfigDashboard>() ?? throw new InvalidOperationException("Dashboard configuration section is missing.");
+        var appConfig = configuration.GetRequiredConfig<AppConfigDashboard>();
 
-        services.AddMediator(typeof(IDomainEntrypoint).Assembly, typeof(IShareableEntrypoint).Assembly);
+        services.AddMediatorSpecificHandlers(typeof(ImageGalleryHandler), typeof(ImageDeletePublisherHandler));
         services.AddSingleton(appConfig);
         services.AddSingleton(appConfig.PubSubConfig);
         await services.AddStorageServiceDependenciesAsync();

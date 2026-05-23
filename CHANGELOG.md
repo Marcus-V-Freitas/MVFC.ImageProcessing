@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.0] - 2026-05-22
+
+### Added
+
+- **Architecture**: Implemented **Dead-Letter Queues (DLQ)** via Terraform. Messages failing 5 times are now safely routed to `dead-letter-topic` across all worker subscriptions.
+- **Architecture**: Added HTTP Resilience to the Vision API client using `Microsoft.Extensions.Http.Resilience`, introducing Circuit Breakers and Retries against transient AI failures.
+- **Testing**: Added `MVFC.Image.Infra.Tests` to cover infrastructure services (`StorageService`, `PublishService`).
+- **Testing**: Introduced WebApplicationFactory patterns (`AnalysisWorkerFactory`, `UploadApiFactory`, etc.) for robust integration testing across all workers and APIs.
+- **Documentation**: Updated `README.md` and `README.pt-BR.md` with advanced architecture diagrams, DLQ flows, and project badges.
+
+### Changed
+
+- **Architecture**: Extracted `ConfigurationExtensions` into the Shareable layer to centralize configuration binding and validation.
+- **Testing**: Refactored domain handler tests to properly isolate dependencies.
+
+### Removed
+
+- Removed unused `IDomainEntrypoint.cs` and `IShareableEntrypoint.cs` as they are no longer necessary for test discovery.
+
+---
+
 ## [2.3.0] - 2026-05-19
 
 ### Added
@@ -113,6 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.4.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.4.0
+[2.3.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.3.0
 [2.2.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.2.0
 [2.1.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.0.0

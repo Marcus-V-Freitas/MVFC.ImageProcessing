@@ -1,6 +1,6 @@
 namespace MVFC.Image.Domain.Tests.Handlers;
 
-public class ImageUploadHandlerTests
+public sealed class ImageUploadHandlerTests
 {
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
     private readonly IPublishService _publisher = Substitute.For<IPublishService>();
@@ -10,7 +10,7 @@ public class ImageUploadHandlerTests
         new StorageConfig("uploads", "thumbnails", "analysis-results"));
 
     [Fact]
-    public async Task Handle_ValidRequest_ShouldUploadToStorageAndPublishEvent()
+    public async Task HandleSuccessPathShouldUploadToStorageAndPublishEvent()
     {
         // Arrange
         var handler = new ImageUploadHandler(_storage, _config, _publisher);
@@ -21,12 +21,12 @@ public class ImageUploadHandlerTests
             Arg.Is<string>(s => s.EndsWith("-foto.jpg")),
             "image/jpeg",
             request.Data,
-            default)
+            TestContext.Current.CancellationToken)
             .Returns(Task.FromResult("uploads/guid-foto.jpg"));
 
         // Act
-        var result = await handler.Handle(request);
-
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
+            
         // Assert
         result.IsSuccess.Should().BeTrue();
 
@@ -35,7 +35,7 @@ public class ImageUploadHandlerTests
             Arg.Is<string>(name => name.EndsWith("-foto.jpg")),
             "image/jpeg",
             request.Data,
-            default);
+            TestContext.Current.CancellationToken);
 
         await _publisher.Received(1).PublishAsync(
             Arg.Is<FileUploadedRequest>(r => r.FileName.EndsWith("-foto.jpg") && r.ContentType == "image/jpeg" && r.Bucket == "uploads"),
@@ -45,22 +45,23 @@ public class ImageUploadHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenStorageThrows_ShouldThrowException()
+    public async Task HandleWhenStorageThrowsShouldThrowException()
     {
         // Arrange
         var handler = new ImageUploadHandler(_storage, _config, _publisher);
         var request = new FileUploadRequest("foto.jpg", "image/jpeg", 1024, [0xFF]);
+        var exception = new InvalidOperationException("GCS indisponível");
 
         _storage.UploadImageAsync(
             "uploads",
             Arg.Is<string>(s => s.EndsWith("-foto.jpg")),
             "image/jpeg",
             request.Data,
-            default)
-            .ThrowsAsync(new Exception("GCS indisponível"));
+            TestContext.Current.CancellationToken)
+            .ThrowsAsync(exception);
 
         // Act
-        Func<Task> act = async () => await handler.Handle(request);
+        Func<Task> act = async () => await handler.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<Exception>().WithMessage("GCS indisponível");

@@ -3,6 +3,7 @@ global using Microsoft.Extensions.DependencyInjection;
 global using MVFC.Image.Domain;
 global using MVFC.Image.Domain.Apis;
 global using MVFC.Image.Domain.Contracts;
+global using MVFC.Image.Domain.Handlers;
 global using MVFC.Image.Infra;
 global using MVFC.Image.Shareable;
 global using MVFC.Image.Shareable.Configs;

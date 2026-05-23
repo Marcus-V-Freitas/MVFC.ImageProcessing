@@ -1,87 +1,104 @@
 namespace MVFC.ImageDelete.Worker.Tests;
 
-public class DeleteWorkerTests
+public sealed class DeleteWorkerTests
 {
-    static DeleteWorkerTests()
+    [Fact]
+    public async Task GetRootShouldReturnOk()
     {
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
-        Environment.SetEnvironmentVariable("STORAGE_EMULATOR_HOST", "http://localhost:8080");
-        Environment.SetEnvironmentVariable("PUBSUB_EMULATOR_HOST", "http://localhost:8085");
-        Environment.SetEnvironmentVariable("VisualApiUrl", "http://localhost:5000");
-        Environment.SetEnvironmentVariable("StorageConfig:UploadBucket", "uploads");
-        Environment.SetEnvironmentVariable("StorageConfig:ThumbnailBucket", "thumbnails");
-        Environment.SetEnvironmentVariable("StorageConfig:AnalysisBucket", "analysis-results");
-        Environment.SetEnvironmentVariable("PubSubConfig:ProjectId", "proj-test");
-        Environment.SetEnvironmentVariable("PubSubConfig:Topics:FileUploadedTopic", "file-uploaded");
-        Environment.SetEnvironmentVariable("PubSubConfig:Topics:FileDeletePublisherTopic", "delete-requested");
-        Environment.SetEnvironmentVariable("PubSubConfig:Topics:ImageUploadTopic", "image-upload");
-        Environment.SetEnvironmentVariable("PubSubConfig:Topics:ThumbnailCreatedTopic", "thumbnail-created");
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        using var factory = new DeleteWorkerFactory(mockMediator);
+
+        // Act
+        var response = await factory.GetRootAsync();
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("mvfc-image-delete-worker ok");
     }
 
     [Fact]
-    public async Task DeleteWorker_Endpoints_ShouldRespondCorrectly()
+    public async Task PostPubSubPushShouldReturnOkWhenRequestIsValid()
     {
         // Arrange
-        using var factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureTestServices(services =>
-                {
-                    var mockMediator = Substitute.For<IMediator>();
-                    mockMediator.Send<FileDeleteRequest, Result>(Arg.Is<FileDeleteRequest>(r => r.FileName == "test.png"), Arg.Is<CancellationToken>(_ => true))
-                        .Returns(new ValueTask<Result>(Result.Ok()));
-                    mockMediator.Send<FileDeleteRequest, Result>(Arg.Is<FileDeleteRequest>(r => r.FileName == "fail.png"), Arg.Is<CancellationToken>(_ => true))
-                        .Returns(new ValueTask<Result>(Result.Fail("Error occurred")));
-                    services.AddSingleton(mockMediator);
-                });
-            });
+        var mockMediator = Substitute.For<IMediator>();
+        mockMediator.Send<FileDeleteRequest, Result>(Arg.Is<FileDeleteRequest>(r => r.FileName == "test.png"), Arg.Is<CancellationToken>(_ => true))
+            .Returns(new ValueTask<Result>(Result.Ok()));
+        using var factory = new DeleteWorkerFactory(mockMediator);
 
-        using var client = factory.CreateClient();
-
-        // 1. GET "/"
-        var getResponse = await client.GetAsync("/");
-        getResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
-        (await getResponse.Content.ReadAsStringAsync()).Should().Be("mvfc-image-delete-worker ok");
-
-        // 2. POST "/pubsub/push" - Success Path
         var payload = new FileDeleteRequest("test.png");
         var base64Data = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload)));
         var pubsubRequest = new PubSubRequest(
             new PubSubMessageRequest(base64Data, "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),
             "sub-1"
         );
-        var content = new StringContent(JsonSerializer.Serialize(pubsubRequest), Encoding.UTF8, "application/json");
-        var response = await client.PostAsync("/pubsub/push", content);
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
 
-        // 3. POST "/pubsub/push" - Empty Payload Path
+        // Act
+        var response = await factory.PostPubSubPushAsync(pubsubRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task PostPubSubPushShouldReturnBadRequestWhenDataIsEmpty()
+    {
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        using var factory = new DeleteWorkerFactory(mockMediator);
+
         var emptyRequest = new PubSubRequest(
             new PubSubMessageRequest("", "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),
             "sub-1"
         );
-        var emptyContent = new StringContent(JsonSerializer.Serialize(emptyRequest), Encoding.UTF8, "application/json");
-        var emptyResponse = await client.PostAsync("/pubsub/push", emptyContent);
-        emptyResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
 
-        // 4. POST "/pubsub/push" - Deserialization Failure Path (returns null)
+        // Act
+        var response = await factory.PostPubSubPushAsync(emptyRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostPubSubPushShouldReturnBadRequestWhenRequestIsInvalid()
+    {
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        using var factory = new DeleteWorkerFactory(mockMediator);
+
         var nullBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
         var invalidRequest = new PubSubRequest(
             new PubSubMessageRequest(nullBase64, "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),
             "sub-1"
         );
-        var invalidContent = new StringContent(JsonSerializer.Serialize(invalidRequest), Encoding.UTF8, "application/json");
-        var invalidResponse = await client.PostAsync("/pubsub/push", invalidContent);
-        invalidResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
 
-        // 5. POST "/pubsub/push" - Mediator Failure Path
+        // Act
+        var response = await factory.PostPubSubPushAsync(invalidRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostPubSubPushShouldReturnUnprocessableEntityWhenMediatorFails()
+    {
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        mockMediator.Send<FileDeleteRequest, Result>(Arg.Is<FileDeleteRequest>(r => r.FileName == "fail.png"), Arg.Is<CancellationToken>(_ => true))
+            .Returns(new ValueTask<Result>(Result.Fail("Error occurred")));
+        using var factory = new DeleteWorkerFactory(mockMediator);
+
         var failPayload = new FileDeleteRequest("fail.png");
         var failBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(failPayload)));
         var failRequest = new PubSubRequest(
             new PubSubMessageRequest(failBase64, "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),
             "sub-1"
         );
-        var failContent = new StringContent(JsonSerializer.Serialize(failRequest), Encoding.UTF8, "application/json");
-        var failResponse = await client.PostAsync("/pubsub/push", failContent);
-        failResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.UnprocessableEntity);
+
+        // Act
+        var response = await factory.PostPubSubPushAsync(failRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.UnprocessableEntity);
     }
 }

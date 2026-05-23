@@ -1,5 +1,8 @@
 # 📸 MVFC.ImageProcessing — Media Pipeline
 
+[![Coverage](https://codecov.io/gh/Marcus-V-Freitas/MVFC.ImageProcessing/branch/main/graph/badge.svg)](https://codecov.io/gh/Marcus-V-Freitas/MVFC.ImageProcessing)
+[![License](https://img.shields.io/github/license/Marcus-V-Freitas/MVFC.ImageProcessing)](LICENSE)
+
 > 🇧🇷 [Leia em Português](README.pt-BR.md)
 
 Event-driven image processing pipeline with automatic format normalization, thumbnail generation, AI-powered captioning, and full lifecycle management — 100% local, fully offline.
@@ -64,7 +67,7 @@ After startup, open the **Dashboard** at [http://localhost:3000](http://localhos
 | Upload API | http://localhost:8081/upload |
 | Vision API | http://localhost:5000/health |
 | GCS Buckets | http://localhost:4443/storage/v1/b |
-| PubSub Emulator | http://localhost:8085 |
+| PubSub Emulator | http://localhost:8681 |
 
 ---
 
@@ -93,6 +96,11 @@ graph LR
     PS -->|Push| DEL["mvfc-image-delete-worker :8086"]
     DEL -->|"Deletes from 3 buckets"| GCS
     DASH -.->|"Polling /api/files"| GCS
+
+    CONV -.->|"DLQ (after 5 fails)"| DLQ[("Dead-Letter Topic")]
+    TW -.->|"DLQ (after 5 fails)"| DLQ
+    IA -.->|"DLQ (after 5 fails)"| DLQ
+    DEL -.->|"DLQ (after 5 fails)"| DLQ
 ```
 
 ---
@@ -108,7 +116,7 @@ graph LR
 | **mvfc-image-vision-api** | Python 3.12 + Flask + BLIP | `:5000` | Generates natural language description |
 | **mvfc-image-delete-worker** | .NET 10 | `:8086` | Deletes image from all 3 buckets |
 | **mvfc-image-dashboard-ui** | .NET 10 + HTML/JS | `:3000` | Visual interface with gallery and controls |
-| **PubSub Emulator** | Google Cloud CLI | `:8085` | Event bus (emulated) |
+| **PubSub Emulator** | thekevjames/gcloud-pubsub-emulator | `:8681` | Event bus (emulated) |
 | **Cloud Storage** | fake-gcs-server | `:4443` | Object storage (emulated) |
 | **Terraform** | HCL | — | Provisions topics, subscriptions, and buckets |
 
@@ -219,7 +227,9 @@ sequenceDiagram
     else Corrupted or invalid file
         CONV->>CONV: catch(Exception)
         CONV->>CONV: Log critical error
-        Note over CONV: Pipeline halted for this file
+        CONV-->>PS: 500 Internal Server Error (Nack)
+        Note over PS: Retries up to 5 times
+        PS->>PS: Route to dead-letter-topic
     end
 ```
 
@@ -239,6 +249,11 @@ graph TD
     TW --> T3["thumbnail-created-topic"]
     T3 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
     T4["file-delete-requested-topic"] -->|mvfc-image-delete-worker-sub| DEL["mvfc-image-delete-worker"]
+
+    CONV -.->|Max retries| DLQ["dead-letter-topic"]
+    TW -.->|Max retries| DLQ
+    IA -.->|Max retries| DLQ
+    DEL -.->|Max retries| DLQ
 ```
 
 | Topic | Producer | Consumer | Ack Deadline |
@@ -338,12 +353,20 @@ MVFC.ImageProcessing/
 │   ├── MVFC.ImageUpload.Api/              # Receives uploads via HTTP
 │   ├── MVFC.ImageConverter.Worker/        # Normalizes any format → PNG
 │   ├── MVFC.ImageThumbnail.Worker/        # Generates 200×200 thumbnails
-│   ├── MVFC.ImageAnalysis.Worker/         # Orchestrates AI analysis (Refit)
+│   ├── MVFC.ImageAnalysis.Worker/         # Orchestrates AI analysis (Refit + Polly)
 │   ├── MVFC.ImageVision.Api/              # BLIP model (Python/Flask)
 │   ├── MVFC.ImageDelete.Worker/           # Deletes files from 3 buckets
 │   └── MVFC.ImageDashboard.UI/            # Web interface (HTML/JS)
 ├── tests/
-│   └── MVFC.ImageProcessing.Tests/        # Unit & integration tests
+│   ├── MVFC.Image.Domain.Tests/           # Unit tests for Domain layer
+│   ├── MVFC.Image.Infra.Tests/            # Unit tests for Infra layer
+│   ├── MVFC.Image.Shareable.Tests/        # Unit tests for Shareable layer
+│   ├── MVFC.ImageUpload.Api.Tests/        # Integration tests for Upload API
+│   ├── MVFC.ImageConverter.Worker.Tests/  # Integration tests for Converter Worker
+│   ├── MVFC.ImageThumbnail.Worker.Tests/  # Integration tests for Thumbnail Worker
+│   ├── MVFC.ImageAnalysis.Worker.Tests/   # Integration tests for Analysis Worker
+│   ├── MVFC.ImageDelete.Worker.Tests/     # Integration tests for Delete Worker
+│   └── MVFC.ImageDashboard.UI.Tests/      # Integration tests for Dashboard UI
 ├── scripts/
 │   ├── start.sh                           # Start all infrastructure
 │   ├── stop.sh                            # Tear down everything
@@ -361,6 +384,32 @@ MVFC.ImageProcessing/
 ├── README.md                              # ← You are here! (English)
 └── README.pt-BR.md                        # Portuguese version
 ```
+
+---
+
+## ⚙️ Advanced Architecture Patterns
+
+This project implements enterprise-grade distributed system patterns:
+- **Dead-Letter Queues (DLQ):** Configured via Terraform. If a worker fails to process a poison message (e.g., an invalid file) 5 times, it is safely routed to the `dead-letter-topic` instead of causing infinite retries.
+- **Circuit Breakers & Retries:** The HTTP calls to the Vision API are wrapped with `Microsoft.Extensions.Http.Resilience`, providing automatic retries, timeouts, and circuit breakers against transient AI model failures.
+
+---
+
+## 🔒 Privacy & Security
+
+A core principle of this project is **Data Privacy**. Because the entire pipeline (including the AI vision model) runs locally via Docker:
+- Your images **never** leave your machine.
+- No third-party API keys are required.
+- No cloud storage costs or data mining.
+- Suitable for processing sensitive, personal, or confidential media.
+
+---
+
+## 🚑 Troubleshooting
+
+- **Ports already in use:** If ports like `:3000`, `:5000`, or `:8081` are occupied, the containers won't start. Stop conflicting services or map different ports in `docker-compose.yml`.
+- **First run is slow:** The first time you run `./scripts/start.sh`, Docker will download the Salesforce BLIP model (~1.5GB). Subsequent starts will be immediate.
+- **Images not appearing in Dashboard:** Check if the Pub/Sub emulator and Terraform provisioning completed successfully. You can view worker logs via `docker compose logs -f`.
 
 ---
 

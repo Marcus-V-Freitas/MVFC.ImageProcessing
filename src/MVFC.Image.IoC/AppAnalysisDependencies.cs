@@ -4,13 +4,14 @@ public static class AppAnalysisDependencies
 {
     public static async Task RegisterAnalysisServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
-        var appConfig = configuration.Get<AppConfigAnalysis>() ?? throw new InvalidOperationException("Analysis configuration section is missing.");
+        var appConfig = configuration.GetRequiredConfig<AppConfigAnalysis>();
 
-        services.AddMediator(typeof(IDomainEntrypoint).Assembly, typeof(IShareableEntrypoint).Assembly);
+        services.AddMediatorSpecificHandlers(typeof(ImageAnalysisHandler));
         services.AddSingleton(appConfig);
         await services.AddStorageServiceDependenciesAsync();
 
         services.AddRefitClient<IVisionApiClient>()
-                .ConfigureHttpClient(c => c.BaseAddress = new Uri(appConfig.VisualApiUrl));
+                .ConfigureHttpClient(c => c.BaseAddress = new Uri(appConfig.VisualApiUrl))
+                .AddStandardResilienceHandler();
     }
 }

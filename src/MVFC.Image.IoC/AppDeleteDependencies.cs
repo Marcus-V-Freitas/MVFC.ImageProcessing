@@ -4,9 +4,9 @@ public static class AppDeleteDependencies
 {
     public static async Task RegisterDeleteServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
-        var storageConfig = configuration.GetSection("StorageConfig").Get<StorageConfig>() ?? throw new InvalidOperationException("StorageConfig section is missing.");
+        var storageConfig = configuration.GetRequiredConfig<StorageConfig>("StorageConfig");
         services.AddSingleton(storageConfig);
-        services.AddMediator(typeof(IDomainEntrypoint).Assembly, typeof(IShareableEntrypoint).Assembly);
+        services.AddMediatorSpecificHandlers(typeof(ImageDeleteHandler));
         await services.AddStorageServiceDependenciesAsync();
     }
 }

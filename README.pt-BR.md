@@ -1,5 +1,8 @@
 # 📸 MVFC.ImageProcessing — Media Pipeline
 
+[![Coverage](https://codecov.io/gh/Marcus-V-Freitas/MVFC.ImageProcessing/branch/main/graph/badge.svg)](https://codecov.io/gh/Marcus-V-Freitas/MVFC.ImageProcessing)
+[![License](https://img.shields.io/github/license/Marcus-V-Freitas/MVFC.ImageProcessing)](LICENSE)
+
 > 🇺🇸 [Read in English](README.md)
 
 Pipeline event-driven de processamento de imagens com normalização automática de formato, geração de thumbnails, captioning por IA e gerenciamento completo do ciclo de vida — 100% local, totalmente offline.
@@ -64,7 +67,7 @@ Após subir, acesse o **Dashboard** em [http://localhost:3000](http://localhost:
 | Upload API | http://localhost:8081/upload |
 | Vision API | http://localhost:5000/health |
 | GCS Buckets | http://localhost:4443/storage/v1/b |
-| PubSub Emulator | http://localhost:8085 |
+| PubSub Emulator | http://localhost:8681 |
 
 ---
 
@@ -93,6 +96,11 @@ graph LR
     PS -->|Push| DEL["mvfc-image-delete-worker :8086"]
     DEL -->|"Apaga dos 3 buckets"| GCS
     DASH -.->|"Polling /api/files"| GCS
+
+    CONV -.->|"DLQ (após 5 falhas)"| DLQ[("Dead-Letter Topic")]
+    TW -.->|"DLQ (após 5 falhas)"| DLQ
+    IA -.->|"DLQ (após 5 falhas)"| DLQ
+    DEL -.->|"DLQ (após 5 falhas)"| DLQ
 ```
 
 ---
@@ -108,7 +116,7 @@ graph LR
 | **mvfc-image-vision-api** | Python 3.12 + Flask + BLIP | `:5000` | Gera descrição em linguagem natural |
 | **mvfc-image-delete-worker** | .NET 10 | `:8086` | Exclui imagem dos 3 buckets |
 | **mvfc-image-dashboard-ui** | .NET 10 + HTML/JS | `:3000` | Interface visual com galeria e controles |
-| **PubSub Emulator** | Google Cloud CLI | `:8085` | Barramento de eventos (emulado) |
+| **PubSub Emulator** | thekevjames/gcloud-pubsub-emulator | `:8681` | Barramento de eventos (emulado) |
 | **Cloud Storage** | fake-gcs-server | `:4443` | Armazenamento de objetos (emulado) |
 | **Terraform** | HCL | — | Provisiona tópicos, subscriptions e buckets |
 
@@ -219,7 +227,9 @@ sequenceDiagram
     else Arquivo corrompido ou inválido
         CONV->>CONV: catch(Exception)
         CONV->>CONV: Log de erro crítico
-        Note over CONV: Pipeline interrompido para este arquivo
+        CONV-->>PS: 500 Internal Server Error (Nack)
+        Note over PS: Retenta até 5 vezes
+        PS->>PS: Envia para dead-letter-topic
     end
 ```
 
@@ -239,6 +249,11 @@ graph TD
     TW --> T3["thumbnail-created-topic"]
     T3 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
     T4["file-delete-requested-topic"] -->|mvfc-image-delete-worker-sub| DEL["mvfc-image-delete-worker"]
+
+    CONV -.->|Max retentativas| DLQ["dead-letter-topic"]
+    TW -.->|Max retentativas| DLQ
+    IA -.->|Max retentativas| DLQ
+    DEL -.->|Max retentativas| DLQ
 ```
 
 | Tópico | Produtor | Consumidor | Ack Deadline |
@@ -338,12 +353,20 @@ MVFC.ImageProcessing/
 │   ├── MVFC.ImageUpload.Api/              # Recebe uploads via HTTP
 │   ├── MVFC.ImageConverter.Worker/        # Normaliza qualquer formato → PNG
 │   ├── MVFC.ImageThumbnail.Worker/        # Gera miniaturas 200×200
-│   ├── MVFC.ImageAnalysis.Worker/         # Orquestra análise por IA (Refit)
+│   ├── MVFC.ImageAnalysis.Worker/         # Orquestra análise por IA (Refit + Polly)
 │   ├── MVFC.ImageVision.Api/              # Modelo BLIP (Python/Flask)
 │   ├── MVFC.ImageDelete.Worker/           # Exclui arquivos dos 3 buckets
 │   └── MVFC.ImageDashboard.UI/            # Interface web (HTML/JS)
 ├── tests/
-│   └── MVFC.ImageProcessing.Tests/        # Testes unitários e de integração
+│   ├── MVFC.Image.Domain.Tests/           # Testes unitários do Domain
+│   ├── MVFC.Image.Infra.Tests/            # Testes unitários de Infra
+│   ├── MVFC.Image.Shareable.Tests/        # Testes unitários do Shareable
+│   ├── MVFC.ImageUpload.Api.Tests/        # Testes de integração da API de Upload
+│   ├── MVFC.ImageConverter.Worker.Tests/  # Testes de integração do Converter
+│   ├── MVFC.ImageThumbnail.Worker.Tests/  # Testes de integração do Thumbnail
+│   ├── MVFC.ImageAnalysis.Worker.Tests/   # Testes de integração do Analysis (IA)
+│   ├── MVFC.ImageDelete.Worker.Tests/     # Testes de integração do Delete
+│   └── MVFC.ImageDashboard.UI.Tests/      # Testes de integração do Dashboard UI
 ├── scripts/
 │   ├── start.sh                           # Sobe toda a infraestrutura
 │   ├── stop.sh                            # Derruba tudo
@@ -361,6 +384,32 @@ MVFC.ImageProcessing/
 ├── README.md                              # Versão em inglês
 └── README.pt-BR.md                        # ← Você está aqui! (Português)
 ```
+
+---
+
+## ⚙️ Padrões Avançados de Arquitetura
+
+Este projeto implementa padrões de sistemas distribuídos de nível corporativo:
+- **Dead-Letter Queues (DLQ):** Configurado via Terraform. Se um worker falhar ao processar uma mensagem (ex: um arquivo corrompido) 5 vezes, ela é redirecionada de forma segura para o `dead-letter-topic` em vez de causar retentativas infinitas.
+- **Circuit Breakers & Retries:** As chamadas HTTP para a Vision API são encapsuladas com `Microsoft.Extensions.Http.Resilience`, garantindo retentativas automáticas, timeouts e circuit breakers contra falhas transientes do modelo de IA.
+
+---
+
+## 🔒 Privacidade e Segurança
+
+Um princípio central deste projeto é a **Privacidade de Dados**. Como todo o pipeline (incluindo o modelo de IA) roda localmente via Docker:
+- Suas imagens **nunca** saem da sua máquina.
+- Nenhuma chave de API de terceiros é necessária.
+- Sem custos de armazenamento na nuvem ou mineração de dados.
+- Adequado para processamento de mídias sensíveis, pessoais ou confidenciais.
+
+---
+
+## 🚑 Solução de Problemas
+
+- **Portas em uso:** Se portas como `:3000`, `:5000` ou `:8081` estiverem ocupadas, os containers não iniciarão. Pare os serviços conflitantes ou mapeie portas diferentes no `docker-compose.yml`.
+- **A primeira execução é demorada:** Na primeira vez que você rodar `./scripts/start.sh`, o Docker baixará o modelo Salesforce BLIP (~1,5 GB). As inicializações subsequentes serão imediatas.
+- **Imagens não aparecem no Dashboard:** Verifique se o emulador Pub/Sub e o provisionamento do Terraform foram concluídos com sucesso. Você pode ver os logs dos workers via `docker compose logs -f`.
 
 ---
 

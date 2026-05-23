@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsTestProject>true</IsTestProject>
-    <NoWarn>$(NoWarn);CA1707;xUnit1051;CA2201;CA1873</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

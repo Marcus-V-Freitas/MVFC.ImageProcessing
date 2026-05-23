@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/MVFC.Image.Domain/MVFC.Image.Domain.csproj" />
     <Project Path="src/MVFC.Image.Infra/MVFC.Image.Infra.csproj" />
     <Project Path="src/MVFC.Image.IoC/MVFC.Image.IoC.csproj" />
     <Project Path="src/MVFC.Image.Shareable/MVFC.Image.Shareable.csproj" />
@@ -12,6 +13,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MVFC.Image.Domain.Tests/MVFC.Image.Domain.Tests.csproj" />
+    <Project Path="tests/MVFC.Image.Infra.Tests/MVFC.Image.Infra.Tests.csproj" />
     <Project Path="tests/MVFC.Image.Shareable.Tests/MVFC.Image.Shareable.Tests.csproj" />
     <Project Path="tests/MVFC.ImageAnalysis.Worker.Tests/MVFC.ImageAnalysis.Worker.Tests.csproj" />
     <Project Path="tests/MVFC.ImageConverter.Worker.Tests/MVFC.ImageConverter.Worker.Tests.csproj" />

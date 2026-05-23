@@ -11,7 +11,7 @@ app.MapPost("/pubsub/push", async (
     ILogger<Program> logger,
     CancellationToken ct) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Message?.Data))
+    if (string.IsNullOrWhiteSpace(request.Message.Data))
         return Results.BadRequest("Payload vazio.");
 
     var json = Encoding.UTF8.GetString(Convert.FromBase64String(request.Message.Data));

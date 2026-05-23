@@ -24,13 +24,13 @@ fi
 
 # ── Rebuild e start ──
 info "Construindo e subindo infraestrutura..."
-PUBSUB_EMULATOR_HOST=pubsub:8085 \
+PUBSUB_EMULATOR_HOST=pubsub:8681 \
 STORAGE_EMULATOR_HOST=http://gcs:4443/storage/v1/ \
 VisualApiUrl=http://mvfc-image-vision-api:5000 \
 docker compose -f "$SCRIPT_DIR/../docker-compose.yml" up -d --build
 
 # ── Variáveis de ambiente para Terraform e Validação (Host local) ──
-export PUBSUB_EMULATOR_HOST=localhost:8085
+export PUBSUB_EMULATOR_HOST=localhost:8681
 export GOOGLE_PUBSUB_CUSTOM_ENDPOINT=http://$PUBSUB_EMULATOR_HOST/v1/
 export GOOGLE_STORAGE_CUSTOM_ENDPOINT=http://localhost:4443/storage/v1/
 export GOOGLE_CLOUD_PROJECT=local-project
@@ -70,4 +70,4 @@ echo "  Dashboard:   http://localhost:3000"
 echo "  Upload API:  http://localhost:8081/upload"
 echo "  Vision API:  http://localhost:5000/health"
 echo "  GCS Buckets: http://localhost:4443/storage/v1/b"
-echo "  PubSub:      http://localhost:8085"
+echo "  PubSub:      http://localhost:8681"

@@ -1,0 +1,12 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using FluentAssertions;
+global using NSubstitute;
+global using Xunit;
+global using Google.Cloud.Storage.V1;
+global using MVFC.Image.Shareable.Configs;
+global using Google.Api.Gax;
+global using StorageObjects = Google.Apis.Storage.v1.Data.Objects;
+global using StorageObject = Google.Apis.Storage.v1.Data.Object;

@@ -8,7 +8,7 @@ public sealed class ImageAnalysisHandlerTests
     private readonly AppConfigAnalysis _config = new("http://vision-api/test", new StorageConfig("uploads", "thumbnails", "analysis-results"));
 
     [Fact]
-    public async Task Handle_SuccessPath_ShouldDownloadAnalyzeAndUploadResult()
+    public async Task HandleSuccessPathShouldDownloadAnalyzeAndUploadResult()
     {
         // Arrange
         var handler = new ImageAnalysisHandler(_storage, _visionClient, _config, _logger);
@@ -16,29 +16,28 @@ public sealed class ImageAnalysisHandlerTests
 
         var imageBytes = new byte[] { 1, 2, 3, 4 };
         var imageStream = new MemoryStream(imageBytes);
-        _storage.DownloadImageAsync("uploads", "foto.png", default)
+        _storage.DownloadImageAsync("uploads", "foto.png", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult(imageStream));
 
-        _visionClient.AnalyzeImageAsync(Arg.Is<VisionApiRequest>(r => r.Image == Convert.ToBase64String(imageBytes)), default)
+        _visionClient.AnalyzeImageAsync(Arg.Is<VisionApiRequest>(r => r.Image == Convert.ToBase64String(imageBytes)), TestContext.Current.CancellationToken)
                      .Returns(Task.FromResult("{\"tags\":[\"test\"]}"));
 
         // Act
-        var result = await handler.Handle(request);
-
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
         // Assert
         result.IsSuccess.Should().BeTrue();
-        await _storage.Received(1).DownloadImageAsync("uploads", "foto.png", default);
-        await _visionClient.Received(1).AnalyzeImageAsync(Arg.Is<VisionApiRequest>(r => r.Image == Convert.ToBase64String(imageBytes)), default);
+        await _storage.Received(1).DownloadImageAsync("uploads", "foto.png", TestContext.Current.CancellationToken);
+        await _visionClient.Received(1).AnalyzeImageAsync(Arg.Is<VisionApiRequest>(r => r.Image == Convert.ToBase64String(imageBytes)), TestContext.Current.CancellationToken);
         await _storage.Received(1).UploadImageAsync(
             "analysis-results",
             "analysis-foto.png.json",
             "application/json",
             Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == "{\"tags\":[\"test\"]}"),
-            default);
+            TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public async Task Handle_VisionClientThrowsException_ShouldLogErrorAndReturnFail()
+    public async Task HandleVisionClientThrowsExceptionShouldLogErrorAndReturnFail()
     {
         // Arrange
         var handler = new ImageAnalysisHandler(_storage, _visionClient, _config, _logger);
@@ -46,21 +45,19 @@ public sealed class ImageAnalysisHandlerTests
 
         var imageBytes = new byte[] { 1, 2, 3, 4 };
         var imageStream = new MemoryStream(imageBytes);
-        _storage.DownloadImageAsync("uploads", "foto.png", default)
+        _storage.DownloadImageAsync("uploads", "foto.png", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult(imageStream));
 
-        var exception = new Exception("Vision API down");
-        _visionClient.AnalyzeImageAsync(Arg.Is<VisionApiRequest>(r => r != null), default)
+        var exception = new InvalidOperationException("Vision API down");
+        _visionClient.AnalyzeImageAsync(Arg.Is<VisionApiRequest>(r => r != null), TestContext.Current.CancellationToken)
                      .ThrowsAsync(exception);
 
         // Act
-        var result = await handler.Handle(request);
-
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message == "Vision API down");
-        
-        // Verify logger was called
+
         _logger.ReceivedCalls().Should().NotBeEmpty();
     }
 }

@@ -1,14 +1,14 @@
 services:
 
   pubsub:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    image: thekevjames/gcloud-pubsub-emulator:latest
     container_name: pubsub
-    command: >
-      gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+    environment:
+      - PUBSUB_PROJECT1=local-project,dummy-topic
     ports:
-      - "8085:8085"
+      - "8681:8681"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8681" ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -21,7 +21,7 @@ services:
     ports:
       - "4443:4443"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4443/storage/v1/b"]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:4443/storage/v1/b" ]
       interval: 5s
       timeout: 3s
       retries: 10

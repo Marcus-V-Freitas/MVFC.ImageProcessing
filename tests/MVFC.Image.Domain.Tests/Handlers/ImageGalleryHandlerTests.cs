@@ -5,7 +5,7 @@ public sealed class ImageGalleryHandlerTests
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
 
     [Fact]
-    public async Task Handle_SuccessPath_ShouldReturnFileGalleryResponse()
+    public async Task HandleSuccessPathShouldReturnFileGalleryResponse()
     {
         // Arrange
         var handler = new ImageGalleryHandler(_storage);
@@ -15,26 +15,25 @@ public sealed class ImageGalleryHandlerTests
         var thumbnailsList = new List<string> { "thumb-foto1.jpg" };
         var analysesList = new List<string> { "analysis-foto1.jpg.json" };
 
-        _storage.ListObjectsAsync("uploads", "", default)
+        _storage.ListObjectsAsync("uploads", "", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult<IReadOnlyList<string>>(uploadsList));
             
-        _storage.ListObjectsAsync("thumbnails", "", default)
+        _storage.ListObjectsAsync("thumbnails", "", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult<IReadOnlyList<string>>(thumbnailsList));
             
-        _storage.ListObjectsAsync("analysis-results", "", default)
+        _storage.ListObjectsAsync("analysis-results", "", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult<IReadOnlyList<string>>(analysesList));
 
         // Act
-        var result = await handler.Handle(request);
-
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Uploads.Should().BeEquivalentTo(uploadsList);
         result.Value.Thumbnails.Should().BeEquivalentTo(thumbnailsList);
         result.Value.Analyses.Should().BeEquivalentTo(analysesList);
 
-        await _storage.Received(1).ListObjectsAsync("uploads", "", default);
-        await _storage.Received(1).ListObjectsAsync("thumbnails", "", default);
-        await _storage.Received(1).ListObjectsAsync("analysis-results", "", default);
+        await _storage.Received(1).ListObjectsAsync("uploads", "", TestContext.Current.CancellationToken);
+        await _storage.Received(1).ListObjectsAsync("thumbnails", "", TestContext.Current.CancellationToken);
+        await _storage.Received(1).ListObjectsAsync("analysis-results", "", TestContext.Current.CancellationToken);
     }
 }

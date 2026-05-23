@@ -7,14 +7,14 @@ public sealed class ImageDeletePublisherHandlerTests
         new PubSubConfig("proj-test", new Dictionary<string, string> { ["FileDeleteRequestedTopic"] = "file-delete-requested" }));
 
     [Fact]
-    public async Task Handle_SuccessPath_ShouldPublishDeleteRequestEvent()
+    public async Task HandleSuccessPathShouldPublishDeleteRequestEvent()
     {
         // Arrange
         var handler = new ImageDeletePublisherHandler(_publisher, _config);
         var request = new FileDeletePublisherRequest("guid-foto.png");
 
         // Act
-        var result = await handler.Handle(request);
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();

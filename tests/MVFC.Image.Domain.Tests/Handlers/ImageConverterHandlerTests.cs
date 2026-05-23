@@ -18,30 +18,30 @@ public sealed class ImageConverterHandlerTests
     ];
 
     [Fact]
-    public async Task Handle_SuccessPath_ShouldConvertImageToPngAndPublishEvent()
+    public async Task HandleSuccessPathShouldConvertImageToPngAndPublishEvent()
     {
         // Arrange
         var handler = new ImageConverterHandler(_storage, _publisher, _config, _logger);
         var request = new FileUploadedRequest("foto.jpg", "image/jpeg", ValidImageBytes.Length, "uploads", DateTime.UtcNow);
 
         var originalStream = new MemoryStream(ValidImageBytes);
-        _storage.DownloadImageAsync("uploads", "foto.jpg", default)
+        _storage.DownloadImageAsync("uploads", "foto.jpg", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult(originalStream));
 
         // Act
-        var result = await handler.Handle(request);
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         
-        await _storage.Received(1).DownloadImageAsync("uploads", "foto.jpg", default);
+        await _storage.Received(1).DownloadImageAsync("uploads", "foto.jpg", TestContext.Current.CancellationToken);
         
         await _storage.Received(1).UploadImageAsync(
             "uploads",
             "foto.jpg",
             "image/png",
             Arg.Is<byte[]>(b => b != null && b.Length > 0),
-            default);
+            TestContext.Current.CancellationToken);
 
         await _publisher.Received(1).PublishAsync(
             Arg.Is<FileUploadedRequest>(r => r.FileName == "foto.jpg" && r.ContentType == "image/png" && r.Bucket == "uploads"),
@@ -50,19 +50,18 @@ public sealed class ImageConverterHandlerTests
     }
 
     [Fact]
-    public async Task Handle_InvalidImageFormat_ShouldLogErrorAndReturnFail()
+    public async Task HandleInvalidImageFormatShouldLogErrorAndReturnFail()
     {
         // Arrange
         var handler = new ImageConverterHandler(_storage, _publisher, _config, _logger);
         var request = new FileUploadedRequest("bad.jpg", "image/jpeg", 4, "uploads", DateTime.UtcNow);
+        var badStream = new MemoryStream([1, 2, 3, 4]);
 
-        // Invalid image bytes will cause MagickImage to throw an exception
-        var badStream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
-        _storage.DownloadImageAsync("uploads", "bad.jpg", default)
+        _storage.DownloadImageAsync("uploads", "bad.jpg", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult(badStream));
 
         // Act
-        var result = await handler.Handle(request);
+        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeFalse();

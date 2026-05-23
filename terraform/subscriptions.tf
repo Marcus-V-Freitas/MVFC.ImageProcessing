@@ -6,6 +6,11 @@ resource "google_pubsub_subscription" "image_converter_sub" {
   push_config {
     push_endpoint = "http://mvfc-image-converter-worker:8080/pubsub/push"
   }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dead_letter_topic.id
+    max_delivery_attempts = 5
+  }
 }
 
 resource "google_pubsub_subscription" "push_sub" {
@@ -15,6 +20,11 @@ resource "google_pubsub_subscription" "push_sub" {
 
   push_config {
     push_endpoint = "http://mvfc-image-thumbnail-worker:8080/pubsub/push"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dead_letter_topic.id
+    max_delivery_attempts = 5
   }
 }
 
@@ -26,6 +36,11 @@ resource "google_pubsub_subscription" "image_analysis_sub" {
   push_config {
     push_endpoint = "http://mvfc-image-analysis-worker:8080/pubsub/push"
   }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dead_letter_topic.id
+    max_delivery_attempts = 5
+  }
 }
 
 resource "google_pubsub_subscription" "delete_worker_sub" {
@@ -35,5 +50,10 @@ resource "google_pubsub_subscription" "delete_worker_sub" {
 
   push_config {
     push_endpoint = "http://mvfc-image-delete-worker:8080/pubsub/push"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dead_letter_topic.id
+    max_delivery_attempts = 5
   }
 }
