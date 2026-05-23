@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.0] - 2026-05-22
+
+### Changed
+
+- **Architecture**: Refactored `PublishService` to use Dependency Injection via `IPublisherClientFactory`, removing direct dependency on the emulator and enabling full unit test coverage.
+- **Code Quality**: Centralized `using` statements via `Usings.cs` in `MVFC.Image.Infra` and `MVFC.Image.Infra.Tests`, and corrected `StorageService` namespaces.
+- **Documentation**: Simplified test execution commands in readmes to support the new solution-wide `dotnet test` architecture.
+- **CI/CD**: Customized GitHub Issue and PR templates specifically for the `MVFC.ImageProcessing` project.
+
+### Removed
+
+- Removed outdated NuGet package publishing actions from `.github/workflows/ci.yml` as this is an application project.
+
+---
+
 ## [2.4.0] - 2026-05-22
 
 ### Added

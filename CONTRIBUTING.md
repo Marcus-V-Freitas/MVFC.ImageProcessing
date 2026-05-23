@@ -24,7 +24,7 @@ dotnet build MVFC.ImageProcessing.slnx --configuration Release
 ## Running tests
 
 ```sh
-dotnet test tests/MVFC.ImageProcessing.Tests/MVFC.ImageProcessing.Tests.csproj --configuration Release
+dotnet test --configuration Release
 ```
 
 ## Adding a new service

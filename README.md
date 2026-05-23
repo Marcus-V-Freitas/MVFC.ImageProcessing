@@ -334,7 +334,7 @@ The `mvfc-image-analysis-worker` uses [Refit](https://github.com/reactiveui/refi
 The project includes a test project ready for unit and integration tests:
 
 ```bash
-dotnet test tests/MVFC.ImageProcessing.Tests/MVFC.ImageProcessing.Tests.csproj
+dotnet test
 ```
 
 You can also use the HTTP file at `scripts/mvfc.image-processing.http` for manual API testing (compatible with VS Code REST Client / JetBrains HTTP Client).

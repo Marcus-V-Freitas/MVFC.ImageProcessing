@@ -1,6 +1,6 @@
-namespace MVFC.Image.Infra;
+namespace MVFC.Image.Infra.Messaging;
 
-public sealed class PublishService(PubSubConfig pubSubConfig) : IPublishService
+public sealed class PublishService(PubSubConfig pubSubConfig, IPublisherClientFactory clientFactory) : IPublishService
 {
     private readonly ConcurrentDictionary<string, Lazy<Task<PublisherClient>>> _publishers = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _projectId = pubSubConfig.ProjectId;
@@ -25,15 +25,6 @@ public sealed class PublishService(PubSubConfig pubSubConfig) : IPublishService
     private Task<PublisherClient> GetOrCreatePublisherAsync(string topicId) =>
         _publishers.GetOrAdd(
             topicId,
-            static (topic, service) => new Lazy<Task<PublisherClient>>(() =>
-            {
-                var topicName = TopicName.FromProjectTopic(service._projectId, topic);
-
-                return new PublisherClientBuilder
-                {
-                    EmulatorDetection = EmulatorDetection.EmulatorOrProduction,
-                    TopicName = topicName,
-                }.BuildAsync();
-            }),
-            this).Value;
+            static (topic, state) => new Lazy<Task<PublisherClient>>(() => state.clientFactory.CreateAsync(state._projectId, topic)),
+            (clientFactory, _projectId)).Value;
 }

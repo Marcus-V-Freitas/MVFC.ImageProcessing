@@ -11,6 +11,7 @@ public static class AppUploadDependencies
         services.AddSingleton(appConfig.PubSubConfig);
         await services.AddStorageServiceDependenciesAsync();
 
+        services.AddSingleton<IPublisherClientFactory, PublisherClientFactory>();
         services.AddScoped<IPublishService, PublishService>();
     }
 }

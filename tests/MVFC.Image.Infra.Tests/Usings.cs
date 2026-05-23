@@ -8,5 +8,8 @@ global using Xunit;
 global using Google.Cloud.Storage.V1;
 global using MVFC.Image.Shareable.Configs;
 global using Google.Api.Gax;
+global using MVFC.Image.Infra.Messaging;
+global using MVFC.Image.Infra.Storage;
 global using StorageObjects = Google.Apis.Storage.v1.Data.Objects;
 global using StorageObject = Google.Apis.Storage.v1.Data.Object;
+global using Google.Cloud.PubSub.V1;

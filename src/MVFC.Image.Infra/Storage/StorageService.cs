@@ -1,4 +1,4 @@
-namespace MVFC.Image.Infra;
+namespace MVFC.Image.Infra.Storage;
 
 public sealed class StorageService(StorageClient storageClient) : IStorageService
 {
