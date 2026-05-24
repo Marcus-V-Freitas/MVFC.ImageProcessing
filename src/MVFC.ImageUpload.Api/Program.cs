@@ -14,6 +14,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSingleton<IValidator<FileUploadRequest>, FileUploadRequestValidator>();
 await builder.Services.RegisterUploadServicesAsync(builder.Configuration);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -36,6 +37,7 @@ app.MapPost("/upload", async (IFormFile file, IMediator mediator, IValidator<Fil
 
 }).DisableAntiforgery();
 
+app.MapHealthChecks("/health");
 app.MapGet("/", () => "mvfc-image-upload-api ok");
 
 await app.RunAsync();

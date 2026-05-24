@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace MVFC.ImageDelete.Worker.Tests;
 
 public sealed class DeleteWorkerFactory : IDisposable
@@ -12,7 +14,7 @@ public sealed class DeleteWorkerFactory : IDisposable
         Environment.SetEnvironmentVariable("PUBSUB_EMULATOR_HOST", "http://localhost:8681");
     }
 
-    public DeleteWorkerFactory(IMediator mediator)
+    public DeleteWorkerFactory(IMediator mediator, ILogger<Program>? logger = null)
     {
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -20,6 +22,10 @@ public sealed class DeleteWorkerFactory : IDisposable
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddSingleton(mediator);
+                    if (logger != null)
+                    {
+                        services.AddSingleton(logger);
+                    }
                 });
             });
         _client = _factory.CreateClient();

@@ -1,6 +1,7 @@
 
 var builder = WebApplication.CreateBuilder(args);
 await builder.Services.RegisterAnalysisServicesAsync(builder.Configuration);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -29,6 +30,7 @@ app.MapPost("/pubsub/push", async (
         : Results.UnprocessableEntity(result.Errors);
 });
 
+app.MapHealthChecks("/health");
 app.MapGet("/", () => "mvfc-image-analysis-worker ok");
 
 await app.RunAsync();

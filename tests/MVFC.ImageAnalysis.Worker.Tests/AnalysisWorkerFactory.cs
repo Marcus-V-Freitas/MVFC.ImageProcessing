@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace MVFC.ImageAnalysis.Worker.Tests;
 
 public sealed class AnalysisWorkerFactory : IDisposable
@@ -5,7 +7,7 @@ public sealed class AnalysisWorkerFactory : IDisposable
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
-    public AnalysisWorkerFactory(IMediator mediator)
+    public AnalysisWorkerFactory(IMediator mediator, ILogger<Program>? logger = null)
     {
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("STORAGE_EMULATOR_HOST", "http://localhost:8080");
@@ -18,6 +20,10 @@ public sealed class AnalysisWorkerFactory : IDisposable
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddSingleton(mediator);
+                    if (logger != null)
+                    {
+                        services.AddSingleton(logger);
+                    }
                 });
             });
         _client = _factory.CreateClient();

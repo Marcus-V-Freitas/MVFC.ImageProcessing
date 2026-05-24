@@ -1,3 +1,4 @@
 namespace MVFC.Image.Shareable.Configs;
 
-public sealed record AppConfigDashboard(PubSubConfig PubSubConfig);
+public sealed record AppConfigDashboard(
+    [property: Required] PubSubConfig PubSubConfig);

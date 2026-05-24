@@ -1,3 +1,5 @@
 namespace MVFC.Image.Shareable.Configs;
 
-public sealed record AppConfigUpload(PubSubConfig PubSubConfig, StorageConfig StorageConfig);
+public sealed record AppConfigUpload(
+    [property: Required] PubSubConfig PubSubConfig,
+    [property: Required] StorageConfig StorageConfig);

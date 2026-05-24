@@ -1,13 +1,23 @@
 namespace MVFC.Image.Domain.Handlers;
 
-public sealed class ImageGalleryHandler(IStorageService storage) : ICommandHandler<FileGalleryRequest, Result<FileGalleryResponse>>
+public sealed class ImageGalleryHandler(
+    IStorageService storage,
+    ILogger<ImageGalleryHandler> logger) : ICommandHandler<FileGalleryRequest, Result<FileGalleryResponse>>
 {
     public async ValueTask<Result<FileGalleryResponse>> Handle(FileGalleryRequest request, CancellationToken cancellationToken = default)
     {
-        var uploads = await storage.ListObjectsAsync("uploads", "", cancellationToken);
-        var thumbnails = await storage.ListObjectsAsync("thumbnails", "", cancellationToken);
-        var analyses = await storage.ListObjectsAsync("analysis-results", "", cancellationToken);
+        try
+        {
+            var uploads = await storage.ListObjectsAsync("uploads", "", cancellationToken);
+            var thumbnails = await storage.ListObjectsAsync("thumbnails", "", cancellationToken);
+            var analyses = await storage.ListObjectsAsync("analysis-results", "", cancellationToken);
 
-        return new FileGalleryResponse(uploads, thumbnails, analyses);
+            return new FileGalleryResponse(uploads, thumbnails, analyses);
+        }
+        catch (Exception ex)
+        {
+            logger.LogErrorGallery(ex, ex.Message);
+            return Result.Fail<FileGalleryResponse>(ex.Message);
+        }
     }
 }

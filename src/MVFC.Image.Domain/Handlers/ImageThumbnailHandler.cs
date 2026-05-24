@@ -3,28 +3,38 @@ namespace MVFC.Image.Domain.Handlers;
 public sealed class ImageThumbnailHandler(
     IStorageService storage,
     IPublishService publisher,
-    AppConfigThumbnail appConfig) : ICommandHandler<FileThumbnailRequest, Result>
+    AppConfigThumbnail appConfig,
+    ILogger<ImageThumbnailHandler> logger) : ICommandHandler<FileThumbnailRequest, Result>
 {
     public async ValueTask<Result> Handle(FileThumbnailRequest request, CancellationToken cancellationToken = default)
     {
-        var original = await storage.DownloadImageAsync(request.Bucket, request.FileName, cancellationToken: cancellationToken);
-        original.Position = 0;
-
-        using var image = new MagickImage(original);
-        image.Resize(200, 200);
-        image.Format = MagickFormat.Jpeg;
-        var bytes = image.ToByteArray();
-
-        var thumbName = $"thumb-{request.FileName}";
-        await storage.UploadImageAsync(appConfig.StorageConfig.ThumbnailBucket, thumbName, "image/png", bytes, cancellationToken: cancellationToken);
-
-        var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        try
         {
-            { "event-type", "thumbnail-created" },
-        };
+            var original = await storage.DownloadImageAsync(request.Bucket, request.FileName, cancellationToken: cancellationToken);
+            original.Position = 0;
 
-        await publisher.PublishAsync(request, appConfig.PubSubConfig.Topics["ThumbnailCreatedTopic"], attributes);
+            using var image = new MagickImage(original);
+            image.Resize(new MagickGeometry(200, 200) { IgnoreAspectRatio = false });
+            image.Format = MagickFormat.Png;
+            var bytes = image.ToByteArray();
 
-        return Result.Ok();
+            var baseName = Path.GetFileNameWithoutExtension(request.FileName);
+            var thumbName = $"thumb-{baseName}.png";
+            await storage.UploadImageAsync(appConfig.StorageConfig.ThumbnailBucket, thumbName, "image/png", bytes, cancellationToken: cancellationToken);
+
+            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "event-type", "thumbnail-created" },
+            };
+
+            await publisher.PublishAsync(request, appConfig.PubSubConfig.ThumbnailCreatedTopic, attributes);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            logger.LogErrorThumbnail(ex, request.FileName);
+            return Result.Fail(ex.Message);
+        }
     }
 }

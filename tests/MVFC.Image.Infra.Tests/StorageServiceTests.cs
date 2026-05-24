@@ -5,6 +5,7 @@ public sealed class StorageServiceTests
     [Fact]
     public async Task DownloadImageAsyncShouldReturnStream()
     {
+
         var storageClient = Substitute.For<StorageClient>();
         var service = new StorageService(storageClient);
 

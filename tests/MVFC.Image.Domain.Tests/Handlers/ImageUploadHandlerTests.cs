@@ -4,16 +4,19 @@ public sealed class ImageUploadHandlerTests
 {
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
     private readonly IPublishService _publisher = Substitute.For<IPublishService>();
+    private readonly ILogger<ImageUploadHandler> _logger = Substitute.For<ILogger<ImageUploadHandler>>();
     private readonly AppConfigUpload _config = new(
-        new PubSubConfig("proj-test",
-            new Dictionary<string, string> { ["ImageUploadTopic"] = "image-upload" }),
+        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "file-delete-requested"),
         new StorageConfig("uploads", "thumbnails", "analysis-results"));
+    private readonly ImageUploadHandler _sut;
+
+    public ImageUploadHandlerTests() =>
+        _sut = new(_storage, _config, _publisher, _logger);
 
     [Fact]
     public async Task HandleSuccessPathShouldUploadToStorageAndPublishEvent()
     {
         // Arrange
-        var handler = new ImageUploadHandler(_storage, _config, _publisher);
         var request = new FileUploadRequest("foto.jpg", "image/jpeg", 1024, [0xFF, 0xD8]);
 
         _storage.UploadImageAsync(
@@ -25,7 +28,7 @@ public sealed class ImageUploadHandlerTests
             .Returns(Task.FromResult("uploads/guid-foto.jpg"));
 
         // Act
-        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
+        var result = await _sut.Handle(request, TestContext.Current.CancellationToken);
             
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -45,28 +48,28 @@ public sealed class ImageUploadHandlerTests
     }
 
     [Fact]
-    public async Task HandleWhenStorageThrowsShouldThrowException()
+    public async Task HandleWhenPublisherThrowsAndLoggerEnabledShouldLogAndReturnFail()
     {
         // Arrange
-        var handler = new ImageUploadHandler(_storage, _config, _publisher);
-        var request = new FileUploadRequest("foto.jpg", "image/jpeg", 1024, [0xFF]);
-        var exception = new InvalidOperationException("GCS indisponível");
+        var request = new FileUploadRequest("foto.jpg", "image/jpeg", 1024, [0xFF, 0xD8]);
+        var exception = new InvalidOperationException("PubSub unavailable");
 
-        _storage.UploadImageAsync(
-            "uploads",
-            Arg.Is<string>(s => s.EndsWith("-foto.jpg")),
-            "image/jpeg",
-            request.Data,
-            TestContext.Current.CancellationToken)
-            .ThrowsAsync(exception);
+        _logger.IsEnabled(LogLevel.Warning)
+               .Returns(true);
+
+        _publisher.When(x => x.PublishAsync(
+            Arg.Any<FileUploadedRequest>(),
+            "image-upload",
+            Arg.Any<IReadOnlyDictionary<string, string>>()))
+            .Do(_ => throw exception);
 
         // Act
-        Func<Task> act = async () => await handler.Handle(request, TestContext.Current.CancellationToken);
+        var result = await _sut.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
-        await act.Should().ThrowAsync<Exception>().WithMessage("GCS indisponível");
-        await _publisher.DidNotReceive().PublishAsync(
-            Arg.Any<FileUploadedRequest>(), Arg.Any<string>(),
-            Arg.Any<IReadOnlyDictionary<string, string>>());
+        result.IsFailed.Should().BeTrue();
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("Upload succeeded but event publish failed"));
+        
+        _logger.Received(1).LogWarningUploadPublishFailed(exception, request.FileName);
     }
 }

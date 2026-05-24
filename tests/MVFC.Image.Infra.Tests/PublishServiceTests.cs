@@ -16,7 +16,7 @@ public sealed class PublishServiceTests
         mockFactory.CreateAsync(Arg.Is("test-project"), Arg.Is("test-topic"))
                    .Returns(Task.FromResult(mockPublisher));
 
-        var config = new PubSubConfig("test-project", new Dictionary<string, string>());
+        var config = new PubSubConfig("test-project", "image-upload", "file-converted", "thumbnail-created", "file-delete-requested");
         var service = new PublishService(config, mockFactory);
 
         var message = new { Text = "test" };

@@ -5,10 +5,13 @@ public static class AppUploadDependencies
     public static async Task RegisterUploadServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
         var appConfig = configuration.GetRequiredConfig<AppConfigUpload>();
+        Validator.ValidateObject(appConfig, new ValidationContext(appConfig), validateAllProperties: true);
+
+        services.AddSingleton(appConfig);
+        services.AddSingleton(Options.Create(appConfig));
+        services.AddSingleton(appConfig.PubSubConfig);
 
         services.AddMediatorSpecificHandlers(typeof(ImageUploadHandler));
-        services.AddSingleton(appConfig);
-        services.AddSingleton(appConfig.PubSubConfig);
         await services.AddStorageServiceDependenciesAsync();
 
         services.AddSingleton<IPublisherClientFactory, PublisherClientFactory>();

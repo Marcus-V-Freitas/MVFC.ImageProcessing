@@ -1,4 +1,3 @@
-
 namespace MVFC.Image.Domain.Handlers;
 
 public sealed class ImageAnalysisHandler(
@@ -9,12 +8,12 @@ public sealed class ImageAnalysisHandler(
 {
     public async ValueTask<Result> Handle(FileConvertedRequest request, CancellationToken cancellationToken = default)
     {
-        var stream = await storage.DownloadImageAsync(appConfig.StorageConfig.UploadBucket, request.FileName, cancellationToken: cancellationToken);
-        var base64Image = Convert.ToBase64String(stream.ToArray());
-        var visionRequest = new VisionApiRequest(base64Image);
-
         try
         {
+            var stream = await storage.DownloadImageAsync(appConfig.StorageConfig.UploadBucket, request.FileName, cancellationToken: cancellationToken);
+            var base64Image = Convert.ToBase64String(stream.ToArray());
+            var visionRequest = new VisionApiRequest(base64Image);
+
             var responseText = await visionClient.AnalyzeImageAsync(visionRequest, cancellationToken);
             var bytes = Encoding.UTF8.GetBytes(responseText);
             var analysisName = $"analysis-{request.FileName}.json";

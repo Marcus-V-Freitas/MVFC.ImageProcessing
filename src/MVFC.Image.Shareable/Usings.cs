@@ -7,3 +7,4 @@ global using MVFC.Image.Shareable.Requests;
 global using System;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Configuration;
+global using System.ComponentModel.DataAnnotations;

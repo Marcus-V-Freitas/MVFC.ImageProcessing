@@ -5,10 +5,12 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Refit.HttpClientFactory" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MVFC.Image.Infra\MVFC.Image.Infra.csproj" />
+    <ProjectReference Include="..\MVFC.Image.Domain\MVFC.Image.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -12,7 +12,7 @@ public sealed class ConverterWorkerFactory : IDisposable
         Environment.SetEnvironmentVariable("PUBSUB_EMULATOR_HOST", "http://localhost:8681");
     }
 
-    public ConverterWorkerFactory(IMediator mediator)
+    public ConverterWorkerFactory(IMediator mediator, ILogger<Program>? logger = null)
     {
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -20,6 +20,10 @@ public sealed class ConverterWorkerFactory : IDisposable
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddSingleton(mediator);
+                    if (logger != null)
+                    {
+                        services.AddSingleton(logger);
+                    }
                 });
             });
         _client = _factory.CreateClient();

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.6.0] - 2026-05-24
+
+### Added
+
+- **Observability**: Added High-Performance Logging using `LoggerMessage` source generators across all Domain Handlers (`ImageThumbnailHandler`, `ImageDeleteHandler`, `ImageGalleryHandler`, etc.), introducing structured logging and gracefully catching exceptions as `Result.Fail`.
+- **Observability**: Tests were extended to verify proper `ILogger` invocations.
+
+### Changed
+
+- **Domain**: Refactored `ImageThumbnailHandler` to generate `.png` thumbnails while preserving the aspect ratio, and handling exceptions resiliently.
+- **Configuration**: Refactored `PubSubConfig` and other application configurations to use strongly typed properties instead of dictionary lookups for topic names.
+- **Architecture**: Moved `ConfigurationExtensions.cs` to the `Extensions` namespace for better grouping.
+
+### Removed
+
+- Removed obsolete `ShareableTypesTests.cs`.
+
+---
+
 ## [2.5.1] - 2026-05-22
 
 ### Fixed

@@ -1,10 +1,13 @@
 var builder = WebApplication.CreateBuilder(args);
 await builder.Services.RegisterDashboardServicesAsync(builder.Configuration);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.MapHealthChecks("/health");
 
 app.MapGet("/api/files", async (IMediator mediator, CancellationToken cancellationToken) =>
 {

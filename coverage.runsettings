@@ -9,6 +9,7 @@
           <Exclude>[*.Tests]*,[*.Playground]*,[*.AppHost]*</Exclude>
           <ExcludeByAttribute>ExcludeFromCodeCoverage,GeneratedCode,CompilerGenerated</ExcludeByAttribute>
           <ExcludeByFile>**/tests/**/*.cs,**/playground/**/*.cs</ExcludeByFile>
+          <ExcludeByFile>**/LoggerMessage.g.cs</ExcludeByFile>
           <SingleHit>false</SingleHit>
           <UseSourceLink>true</UseSourceLink>
           <IncludeTestAssembly>false</IncludeTestAssembly>

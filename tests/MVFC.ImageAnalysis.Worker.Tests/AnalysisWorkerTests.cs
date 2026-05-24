@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace MVFC.ImageAnalysis.Worker.Tests;
 
 public sealed class AnalysisWorkerTests
@@ -74,11 +76,14 @@ public sealed class AnalysisWorkerTests
     }
 
     [Fact]
-    public async Task PostPubSubPushShouldReturnBadRequestWhenRequestIsInvalid()
+    public async Task PostPubSubPushAndLoggerEnabledShouldLogWarningAndReturnBadRequestWhenRequestIsInvalid()
     {
         // Arrange
         var mockMediator = Substitute.For<IMediator>();
-        using var factory = new AnalysisWorkerFactory(mockMediator);
+        var mockLogger = Substitute.For<ILogger<Program>>();
+        mockLogger.IsEnabled(LogLevel.Warning).Returns(true);
+
+        using var factory = new AnalysisWorkerFactory(mockMediator, mockLogger);
 
         var nullBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
         var invalidRequest = new PubSubRequest(
@@ -91,6 +96,41 @@ public sealed class AnalysisWorkerTests
 
         // Assert
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+        mockLogger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task PostPubSubPushAndLoggerDisabledShouldNotLogWarningAndReturnBadRequestWhenRequestIsInvalid()
+    {
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        var mockLogger = Substitute.For<ILogger<Program>>();
+        mockLogger.IsEnabled(LogLevel.Warning).Returns(false);
+
+        using var factory = new AnalysisWorkerFactory(mockMediator, mockLogger);
+
+        var nullBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
+        var invalidRequest = new PubSubRequest(
+            new PubSubMessageRequest(nullBase64, "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),
+            "sub-1"
+        );
+
+        // Act
+        var response = await factory.PostPubSubPushAsync(invalidRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+        mockLogger.DidNotReceive().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-namespace MVFC.Image.Shareable.Configs;
+namespace MVFC.Image.Shareable.Extensions;
 
 public static class ConfigurationExtensions
 {

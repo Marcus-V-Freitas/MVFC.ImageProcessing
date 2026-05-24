@@ -2,6 +2,7 @@
 var builder = WebApplication.CreateBuilder(args);
 
 await builder.Services.RegisterThumbnailServicesAsync(builder.Configuration);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -30,6 +31,7 @@ app.MapPost("/pubsub/push", async (
         : Results.UnprocessableEntity(result.Errors);
 });
 
+app.MapHealthChecks("/health");
 app.MapGet("/", () => "mvfc-image-thumbnail-worker ok");
 
 await app.RunAsync();

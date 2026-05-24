@@ -1,4 +1,3 @@
-
 namespace MVFC.Image.Domain.Handlers;
 
 public sealed class ImageConverterHandler(
@@ -9,10 +8,10 @@ public sealed class ImageConverterHandler(
 {
     public async ValueTask<Result> Handle(FileUploadedRequest request, CancellationToken cancellationToken = default)
     {
-        var original = await storage.DownloadImageAsync(request.Bucket, request.FileName, cancellationToken);
-
         try
         {
+            var original = await storage.DownloadImageAsync(request.Bucket, request.FileName, cancellationToken);
+
             using var image = new MagickImage(original);
             image.Format = MagickFormat.Png;
             var bytes = image.ToByteArray();
@@ -24,7 +23,7 @@ public sealed class ImageConverterHandler(
                 ContentType: "image/png",
                 Size: bytes.Length,
                 Bucket: request.Bucket,
-                UploadedAt: DateTime.UtcNow
+                UploadedAt: request.UploadedAt
             );
 
             var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -32,7 +31,7 @@ public sealed class ImageConverterHandler(
                 { "event-type", "file.png.converted" },
             };
 
-            await publisher.PublishAsync(newEvt, appConfig.PubSubConfig.Topics["FileConvertTopic"], attributes);
+            await publisher.PublishAsync(newEvt, appConfig.PubSubConfig.FileConvertTopic, attributes);
 
             return Result.Ok();
         }

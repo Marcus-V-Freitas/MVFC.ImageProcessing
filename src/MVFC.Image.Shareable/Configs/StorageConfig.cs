@@ -1,6 +1,6 @@
 namespace MVFC.Image.Shareable.Configs;
 
 public sealed record StorageConfig(
-    string UploadBucket,
-    string ThumbnailBucket,
-    string AnalysisBucket);
+    [property: Required] string UploadBucket,
+    [property: Required] string ThumbnailBucket,
+    [property: Required] string AnalysisBucket);

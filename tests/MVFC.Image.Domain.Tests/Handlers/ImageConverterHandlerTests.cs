@@ -2,34 +2,37 @@ namespace MVFC.Image.Domain.Tests.Handlers;
 
 public sealed class ImageConverterHandlerTests
 {
+    private static readonly byte[] ValidImageBytes =
+    [
+        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00,
+        0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00,
+        0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+        0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3B
+    ];
+
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
     private readonly IPublishService _publisher = Substitute.For<IPublishService>();
     private readonly ILogger<ImageConverterHandler> _logger = Substitute.For<ILogger<ImageConverterHandler>>();
     private readonly AppConfigConverter _config = new(
-        new PubSubConfig("proj-test", new Dictionary<string, string> { ["FileConvertTopic"] = "file-converted" }),
+        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "file-delete-requested"),
         new StorageConfig("uploads", "thumbnails", "analysis-results"));
+    private readonly ImageConverterHandler _sut;
 
-    private static readonly byte[] ValidImageBytes =
-    [
-        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 
-        0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 
-        0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 
-        0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3B
-    ];
+    public ImageConverterHandlerTests() =>
+        _sut = new(_storage, _publisher, _config, _logger);
 
     [Fact]
     public async Task HandleSuccessPathShouldConvertImageToPngAndPublishEvent()
     {
         // Arrange
-        var handler = new ImageConverterHandler(_storage, _publisher, _config, _logger);
         var request = new FileUploadedRequest("foto.jpg", "image/jpeg", ValidImageBytes.Length, "uploads", DateTime.UtcNow);
-
         var originalStream = new MemoryStream(ValidImageBytes);
+
         _storage.DownloadImageAsync("uploads", "foto.jpg", TestContext.Current.CancellationToken)
                 .Returns(Task.FromResult(originalStream));
 
         // Act
-        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
+        var result = await _sut.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -50,24 +53,26 @@ public sealed class ImageConverterHandlerTests
     }
 
     [Fact]
-    public async Task HandleInvalidImageFormatShouldLogErrorAndReturnFail()
+    public async Task HandleInvalidImageFormatAndLoggerEnabledShouldLogAndReturnFail()
     {
         // Arrange
-        var handler = new ImageConverterHandler(_storage, _publisher, _config, _logger);
         var request = new FileUploadedRequest("bad.jpg", "image/jpeg", 4, "uploads", DateTime.UtcNow);
-        var badStream = new MemoryStream([1, 2, 3, 4]);
+        var exception = new InvalidOperationException("Invalid image format");
+
+        _logger.IsEnabled(LogLevel.Error)
+               .Returns(true);
 
         _storage.DownloadImageAsync("uploads", "bad.jpg", TestContext.Current.CancellationToken)
-                .Returns(Task.FromResult(badStream));
+                .ThrowsAsync(exception);
 
         // Act
-        var result = await handler.Handle(request, TestContext.Current.CancellationToken);
+        var result = await _sut.Handle(request, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
 
-        _logger.ReceivedCalls().Should().NotBeEmpty();
+        _logger.Received(1).LogErrorConvert(exception, request.FileName);
 
         await _publisher.DidNotReceive().PublishAsync(
             Arg.Any<FileUploadedRequest>(),

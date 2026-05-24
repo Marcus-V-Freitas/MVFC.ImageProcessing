@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace MVFC.ImageThumbnail.Worker.Tests;
 
 public sealed class ThumbnailWorkerFactory : IDisposable
@@ -12,7 +14,7 @@ public sealed class ThumbnailWorkerFactory : IDisposable
         Environment.SetEnvironmentVariable("PUBSUB_EMULATOR_HOST", "http://localhost:8681");
     }
 
-    public ThumbnailWorkerFactory(IMediator mediator)
+    public ThumbnailWorkerFactory(IMediator mediator, ILogger<Program>? logger = null)
     {
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -20,6 +22,10 @@ public sealed class ThumbnailWorkerFactory : IDisposable
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddSingleton(mediator);
+                    if (logger != null)
+                    {
+                        services.AddSingleton(logger);
+                    }
                 });
             });
         _client = _factory.CreateClient();
