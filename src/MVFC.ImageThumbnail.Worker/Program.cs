@@ -1,4 +1,3 @@
-
 var builder = WebApplication.CreateBuilder(args);
 
 await builder.Services.RegisterThumbnailServicesAsync(builder.Configuration);
@@ -15,7 +14,7 @@ app.MapPost("/pubsub/push", async (
     if (string.IsNullOrWhiteSpace(request.Message.Data))
         return Results.BadRequest("Payload vazio.");
 
-    var json = Encoding.UTF8.GetString(Convert.FromBase64String(request.Message.Data));
+    var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(request.Message.Data));
     var evt = JsonSerializer.Deserialize<FileThumbnailRequest>(json);
 
     if (evt is null)

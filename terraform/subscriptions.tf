@@ -57,3 +57,44 @@ resource "google_pubsub_subscription" "delete_worker_sub" {
     max_delivery_attempts = 5
   }
 }
+
+resource "google_pubsub_subscription" "dashboard_upload_sub" {
+  name                 = "mvfc-dashboard-upload-sub"
+  topic                = google_pubsub_topic.topic.name
+  ack_deadline_seconds = 10
+
+  push_config {
+    push_endpoint = "http://mvfc-image-dashboard-ui:8080/pubsub/notify"
+  }
+}
+
+resource "google_pubsub_subscription" "dashboard_thumbnail_sub" {
+  name                 = "mvfc-dashboard-thumbnail-sub"
+  topic                = google_pubsub_topic.thumbnail_created_topic.name
+  ack_deadline_seconds = 10
+
+  push_config {
+    push_endpoint = "http://mvfc-image-dashboard-ui:8080/pubsub/notify"
+  }
+}
+
+resource "google_pubsub_subscription" "dashboard_delete_sub" {
+  name                 = "mvfc-dashboard-delete-sub"
+  topic                = google_pubsub_topic.file_delete_requested_topic.name
+  ack_deadline_seconds = 10
+
+  push_config {
+    push_endpoint = "http://mvfc-image-dashboard-ui:8080/pubsub/notify"
+  }
+}
+
+resource "google_pubsub_subscription" "dashboard_analysis_sub" {
+  name                 = "mvfc-dashboard-analysis-sub"
+  topic                = google_pubsub_topic.analysis_completed_topic.name
+  ack_deadline_seconds = 10
+
+  push_config {
+    push_endpoint = "http://mvfc-image-dashboard-ui:8080/pubsub/notify"
+  }
+}
+

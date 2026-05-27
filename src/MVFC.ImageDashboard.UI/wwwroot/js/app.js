@@ -27,8 +27,9 @@ async function renderGallery(state) {
     for (const uploadName of [...state.uploads].reverse()) {
         const origUrl = `${STORAGE_URL}/uploads/o/${uploadName}?alt=media`;
         
-        // Assume naming convention
-        const thumbName = `thumb-${uploadName}`;
+        // Thumbnail is always converted to PNG by the backend worker
+        const baseName = uploadName.substring(0, uploadName.lastIndexOf('.')) || uploadName;
+        const thumbName = `thumb-${baseName}.png`;
         const hasThumb = state.thumbnails.includes(thumbName);
         const thumbUrl = hasThumb ? `${STORAGE_URL}/thumbnails/o/${thumbName}?alt=media` : null;
 
@@ -132,6 +133,18 @@ async function deleteFile(fileName) {
     }
 }
 
-// Poll every 3 seconds
-setInterval(fetchState, 3000);
+// Server-Sent Events (SSE) — real-time updates from Pub/Sub
+const evtSource = new EventSource('/events/stream');
+
+evtSource.addEventListener('gallery-updated', () => {
+    fetchState();
+});
+
+evtSource.onerror = () => {
+    console.warn('SSE connection lost, will auto-reconnect...');
+};
+
+// Fallback poll every 30s as safety net
+setInterval(fetchState, 30000);
 fetchState();
+

@@ -1,4 +1,4 @@
-namespace MVFC.Image.Domain.Tests.Handlers;
+﻿namespace MVFC.Image.Domain.Tests.Handlers;
 
 public sealed class ImageConverterHandlerTests
 {
@@ -14,7 +14,7 @@ public sealed class ImageConverterHandlerTests
     private readonly IPublishService _publisher = Substitute.For<IPublishService>();
     private readonly ILogger<ImageConverterHandler> _logger = Substitute.For<ILogger<ImageConverterHandler>>();
     private readonly AppConfigConverter _config = new(
-        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "file-delete-requested"),
+        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "analysis-completed-topic", "file-delete-requested"),
         new StorageConfig("uploads", "thumbnails", "analysis-results"));
     private readonly ImageConverterHandler _sut;
 

@@ -127,4 +127,8 @@ services:
     ports:
       - "3000:8080"
     depends_on:
-      - gcs
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
+

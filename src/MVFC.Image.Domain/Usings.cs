@@ -1,12 +1,12 @@
-global using System.Text;
-global using FluentResults;
+﻿global using FluentResults;
 global using ImageMagick;
+global using Microsoft.Extensions.Logging;
 global using MVFC.Image.Domain.Apis;
 global using MVFC.Image.Domain.Contracts;
 global using MVFC.Image.Shareable.Configs;
+global using MVFC.Image.Shareable.Extensions;
 global using MVFC.Image.Shareable.Requests;
 global using MVFC.Image.Shareable.Response;
 global using MVFC.Mediator;
 global using Refit;
-global using Microsoft.Extensions.Logging;
-global using MVFC.Image.Shareable.Extensions;
+global using System.Text;

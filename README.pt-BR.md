@@ -11,10 +11,10 @@ Pipeline event-driven de processamento de imagens com normalização automática
 
 ## 🎯 Motivação
 
-Faça upload de qualquer imagem — JPEG, PNG, AVIF, HEIC, TIFF, WebP — e tenha automaticamente:
+Faça upload de qualquer imagem nos formatos suportados pelo Magick.NET (JPEG, PNG, AVIF, HEIC, TIFF, WebP, BMP e mais de 200 outros) e tenha automaticamente:
 
 1. O arquivo **normalizado** para um formato web-safe (PNG)
-2. Uma **miniatura** gerada para visualização rápida (200×200 JPEG)
+2. Uma **miniatura** gerada para visualização rápida (200×200 PNG)
 3. Uma **descrição em linguagem natural** gerada por IA (BLIP)
 4. A possibilidade de **excluir** todos os artefatos com um clique
 
@@ -92,10 +92,11 @@ graph LR
     IA -->|"Download + Base64"| VA["mvfc-image-vision-api :5000"]
     VA -->|BLIP captioning| VA
     IA -->|Salva analysis.json| GCS
+    IA -->|"Pub: analysis-completed"| PS
     DASH -->|"Pub: file-delete-requested"| PS
     PS -->|Push| DEL["mvfc-image-delete-worker :8086"]
     DEL -->|"Apaga dos 3 buckets"| GCS
-    DASH -.->|"Polling /api/files"| GCS
+    PS -->|SSE Push /pubsub/notify| DASH
 
     CONV -.->|"DLQ (após 5 falhas)"| DLQ[("Dead-Letter Topic")]
     TW -.->|"DLQ (após 5 falhas)"| DLQ
@@ -111,8 +112,8 @@ graph LR
 |---|---|---|---|
 | **mvfc-image-upload-api** | .NET 10 Minimal API | `:8081` | Recebe uploads, salva no GCS, emite evento |
 | **mvfc-image-converter-worker** | .NET 10 + Magick.NET | `:8084` | Normaliza qualquer formato → PNG |
-| **mvfc-image-thumbnail-worker** | .NET 10 + Magick.NET | `:8082` | Gera miniatura 200×200 em JPEG |
-| **mvfc-image-analysis-worker** | .NET 10 + Refit | `:8083` | Envia imagem para API de visão IA |
+| **mvfc-image-thumbnail-worker** | .NET 10 + Magick.NET | `:8082` | Gera miniatura 200×200 em PNG |
+| **mvfc-image-analysis-worker** | .NET 10 + Refit | `:8083` | Envia imagem para API de visão IA e publica evento `analysis-completed` |
 | **mvfc-image-vision-api** | Python 3.12 + Flask + BLIP | `:5000` | Gera descrição em linguagem natural |
 | **mvfc-image-delete-worker** | .NET 10 | `:8086` | Exclui imagem dos 3 buckets |
 | **mvfc-image-dashboard-ui** | .NET 10 + HTML/JS | `:3000` | Interface visual com galeria e controles |
@@ -158,8 +159,8 @@ sequenceDiagram
 
     PS->>TW: Push /pubsub/push
     TW->>GCS: Download uploads/{guid}-foto.avif (PNG)
-    TW->>TW: MagickImage → Resize(200,200) + JPEG
-    TW->>GCS: Upload thumbnails/thumb-{guid}-foto.avif
+    TW->>TW: MagickImage → Resize(200,200) + PNG
+    TW->>GCS: Upload thumbnails/thumb-{guid}-foto.png
     TW->>PS: Pub "thumbnail-created-topic"
 
     Note over PS,VA: ③ Análise por IA
@@ -168,12 +169,13 @@ sequenceDiagram
     IA->>GCS: Download uploads/{guid}-foto.avif
     IA->>VA: POST /analyze (base64)
     VA->>VA: BLIP image captioning (~3-5s)
-    VA-->>IA: {"description": "...", "tags": [...]}
+    VA-->>IA: {"description": "...", "dominant_colors": [...]}
     IA->>GCS: Upload analysis-results/analysis-{guid}-foto.avif.json
+    IA->>PS: Pub "analysis-completed-topic"
 
-    Note over D: ④ Dashboard atualiza via polling (3s)
-    D->>GCS: GET /api/files
-    D-->>U: Exibe original + thumbnail + descrição
+    Note over D: ④ Dashboard atualiza via SSE (tempo real)
+    PS->>D: Push /pubsub/notify → evento gallery-updated
+    D-->>U: Busca /api/files e re-renderiza a galeria
 ```
 
 ### 2. Exclusão de Imagem
@@ -203,7 +205,7 @@ sequenceDiagram
 
     DW-->>PS: 200 OK (ack)
 
-    Note over D: Polling a cada 3s remove o card da galeria
+    Note over D: Evento SSE dispara atualização da galeria
 ```
 
 ### 3. Normalização de Formato (Detalhe)
@@ -248,7 +250,13 @@ graph TD
     T2 -->|mvfc-image-thumbnail-worker-sub| TW["mvfc-image-thumbnail-worker"]
     TW --> T3["thumbnail-created-topic"]
     T3 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
+    IA --> T5["analysis-completed-topic"]
+    T5 -->|mvfc-dashboard-analysis-sub| DASH["mvfc-image-dashboard-ui"]
     T4["file-delete-requested-topic"] -->|mvfc-image-delete-worker-sub| DEL["mvfc-image-delete-worker"]
+    T1 -->|mvfc-dashboard-upload-sub| DASH
+    T2 -->|mvfc-dashboard-convert-sub| DASH
+    T3 -->|mvfc-dashboard-thumbnail-sub| DASH
+    T4 -->|mvfc-dashboard-delete-sub| DASH
 
     CONV -.->|Max retentativas| DLQ["dead-letter-topic"]
     TW -.->|Max retentativas| DLQ
@@ -258,10 +266,11 @@ graph TD
 
 | Tópico | Produtor | Consumidor | Ack Deadline |
 |---|---|---|---|
-| `file-uploaded-topic` | mvfc-image-upload-api | mvfc-image-converter-worker | 60s |
-| `file-converted-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker | 600s |
-| `thumbnail-created-topic` | mvfc-image-thumbnail-worker | mvfc-image-analysis-worker | 600s |
-| `file-delete-requested-topic` | mvfc-image-dashboard-ui | mvfc-image-delete-worker | 30s |
+| `file-uploaded-topic` | mvfc-image-upload-api | mvfc-image-converter-worker, mvfc-image-dashboard-ui | 60s |
+| `file-converted-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-dashboard-ui | 600s |
+| `thumbnail-created-topic` | mvfc-image-thumbnail-worker | mvfc-image-analysis-worker, mvfc-image-dashboard-ui | 600s |
+| `file-delete-requested-topic` | mvfc-image-dashboard-ui | mvfc-image-delete-worker, mvfc-image-dashboard-ui | 30s |
+| `analysis-completed-topic` | mvfc-image-analysis-worker | mvfc-image-dashboard-ui | 10s |
 
 ---
 
@@ -270,8 +279,8 @@ graph TD
 | Bucket | Conteúdo | Escrito por | Lido por |
 |---|---|---|---|
 | `uploads` | Imagem original (normalizada para PNG) | mvfc-image-upload-api, mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-analysis-worker, mvfc-image-dashboard-ui |
-| `thumbnails` | Miniaturas 200×200 em JPEG | mvfc-image-thumbnail-worker | mvfc-image-dashboard-ui |
-| `analysis-results` | JSON com descrição gerada por IA | mvfc-image-analysis-worker | mvfc-image-dashboard-ui |
+| `thumbnails` | Miniaturas 200×200 em PNG | mvfc-image-thumbnail-worker | mvfc-image-dashboard-ui |
+| `analysis-results` | JSON com descrição gerada por IA e cores dominantes | mvfc-image-analysis-worker | mvfc-image-dashboard-ui |
 
 ---
 
@@ -410,6 +419,8 @@ Um princípio central deste projeto é a **Privacidade de Dados**. Como todo o p
 - **Portas em uso:** Se portas como `:3000`, `:5000` ou `:8081` estiverem ocupadas, os containers não iniciarão. Pare os serviços conflitantes ou mapeie portas diferentes no `docker-compose.yml`.
 - **A primeira execução é demorada:** Na primeira vez que você rodar `./scripts/start.sh`, o Docker baixará o modelo Salesforce BLIP (~1,5 GB). As inicializações subsequentes serão imediatas.
 - **Imagens não aparecem no Dashboard:** Verifique se o emulador Pub/Sub e o provisionamento do Terraform foram concluídos com sucesso. Você pode ver os logs dos workers via `docker compose logs -f`.
+- **Thumbnails não carregam:** O nome do thumbnail sempre usa a extensão `.png` independente do formato original (ex: `thumb-{guid}-foto.png`). Verifique se o Dashboard está buscando pelo nome correto.
+- **Upload rejeitado com 400:** O validador aceita qualquer `image/*`. Certifique-se de que o arquivo é uma imagem válida e que o nome não contém caracteres reservados pelo OS (`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`).
 
 ---
 

@@ -11,10 +11,10 @@ Event-driven image processing pipeline with automatic format normalization, thum
 
 ## 🎯 Motivation
 
-Upload any image — JPEG, PNG, AVIF, HEIC, TIFF, WebP — and have it automatically:
+Upload any image format supported by Magick.NET (JPEG, PNG, AVIF, HEIC, TIFF, WebP, BMP, and 200+ more) and have it automatically:
 
 1. **Normalized** to a web-safe format (PNG)
-2. **Thumbnailed** for quick preview (200×200 JPEG)
+2. **Thumbnailed** for quick preview (200×200 PNG)
 3. **Described** in natural language by an AI model (BLIP)
 4. **Deletable** across all artifacts with a single click
 
@@ -92,10 +92,11 @@ graph LR
     IA -->|"Download + Base64"| VA["mvfc-image-vision-api :5000"]
     VA -->|BLIP captioning| VA
     IA -->|Saves analysis.json| GCS
+    IA -->|"Pub: analysis-completed"| PS
     DASH -->|"Pub: file-delete-requested"| PS
     PS -->|Push| DEL["mvfc-image-delete-worker :8086"]
     DEL -->|"Deletes from 3 buckets"| GCS
-    DASH -.->|"Polling /api/files"| GCS
+    PS -->|SSE Push /pubsub/notify| DASH
 
     CONV -.->|"DLQ (after 5 fails)"| DLQ[("Dead-Letter Topic")]
     TW -.->|"DLQ (after 5 fails)"| DLQ
@@ -111,8 +112,8 @@ graph LR
 |---|---|---|---|
 | **mvfc-image-upload-api** | .NET 10 Minimal API | `:8081` | Receives uploads, saves to GCS, emits event |
 | **mvfc-image-converter-worker** | .NET 10 + Magick.NET | `:8084` | Normalizes any format → PNG |
-| **mvfc-image-thumbnail-worker** | .NET 10 + Magick.NET | `:8082` | Generates 200×200 JPEG thumbnail |
-| **mvfc-image-analysis-worker** | .NET 10 + Refit | `:8083` | Sends image to AI vision API |
+| **mvfc-image-thumbnail-worker** | .NET 10 + Magick.NET | `:8082` | Generates 200×200 PNG thumbnail |
+| **mvfc-image-analysis-worker** | .NET 10 + Refit | `:8083` | Sends image to AI vision API, publishes `analysis-completed` event |
 | **mvfc-image-vision-api** | Python 3.12 + Flask + BLIP | `:5000` | Generates natural language description |
 | **mvfc-image-delete-worker** | .NET 10 | `:8086` | Deletes image from all 3 buckets |
 | **mvfc-image-dashboard-ui** | .NET 10 + HTML/JS | `:3000` | Visual interface with gallery and controls |
@@ -158,8 +159,8 @@ sequenceDiagram
 
     PS->>TW: Push /pubsub/push
     TW->>GCS: Download uploads/{guid}-photo.avif (PNG)
-    TW->>TW: MagickImage → Resize(200,200) + JPEG
-    TW->>GCS: Upload thumbnails/thumb-{guid}-photo.avif
+    TW->>TW: MagickImage → Resize(200,200) + PNG
+    TW->>GCS: Upload thumbnails/thumb-{guid}-photo.png
     TW->>PS: Pub "thumbnail-created-topic"
 
     Note over PS,VA: ③ AI Analysis
@@ -168,12 +169,13 @@ sequenceDiagram
     IA->>GCS: Download uploads/{guid}-photo.avif
     IA->>VA: POST /analyze (base64)
     VA->>VA: BLIP image captioning (~3-5s)
-    VA-->>IA: {"description": "...", "tags": [...]}
+    VA-->>IA: {"description": "...", "dominant_colors": [...]}
     IA->>GCS: Upload analysis-results/analysis-{guid}-photo.avif.json
+    IA->>PS: Pub "analysis-completed-topic"
 
-    Note over D: ④ Dashboard updates via polling (3s)
-    D->>GCS: GET /api/files
-    D-->>U: Displays original + thumbnail + description
+    Note over D: ④ Dashboard updates via SSE (real-time)
+    PS->>D: Push /pubsub/notify → gallery-updated event
+    D-->>U: Fetches /api/files and re-renders gallery
 ```
 
 ### 2. Image Deletion
@@ -203,7 +205,7 @@ sequenceDiagram
 
     DW-->>PS: 200 OK (ack)
 
-    Note over D: Polling every 3s removes the card from gallery
+    Note over D: SSE event triggers gallery refresh
 ```
 
 ### 3. Format Normalization (Detail)
@@ -248,7 +250,13 @@ graph TD
     T2 -->|mvfc-image-thumbnail-worker-sub| TW["mvfc-image-thumbnail-worker"]
     TW --> T3["thumbnail-created-topic"]
     T3 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
+    IA --> T5["analysis-completed-topic"]
+    T5 -->|mvfc-dashboard-analysis-sub| DASH["mvfc-image-dashboard-ui"]
     T4["file-delete-requested-topic"] -->|mvfc-image-delete-worker-sub| DEL["mvfc-image-delete-worker"]
+    T1 -->|mvfc-dashboard-upload-sub| DASH
+    T2 -->|mvfc-dashboard-convert-sub| DASH
+    T3 -->|mvfc-dashboard-thumbnail-sub| DASH
+    T4 -->|mvfc-dashboard-delete-sub| DASH
 
     CONV -.->|Max retries| DLQ["dead-letter-topic"]
     TW -.->|Max retries| DLQ
@@ -258,10 +266,11 @@ graph TD
 
 | Topic | Producer | Consumer | Ack Deadline |
 |---|---|---|---|
-| `file-uploaded-topic` | mvfc-image-upload-api | mvfc-image-converter-worker | 60s |
-| `file-converted-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker | 600s |
-| `thumbnail-created-topic` | mvfc-image-thumbnail-worker | mvfc-image-analysis-worker | 600s |
-| `file-delete-requested-topic` | mvfc-image-dashboard-ui | mvfc-image-delete-worker | 30s |
+| `file-uploaded-topic` | mvfc-image-upload-api | mvfc-image-converter-worker, mvfc-image-dashboard-ui | 60s |
+| `file-converted-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-dashboard-ui | 600s |
+| `thumbnail-created-topic` | mvfc-image-thumbnail-worker | mvfc-image-analysis-worker, mvfc-image-dashboard-ui | 600s |
+| `file-delete-requested-topic` | mvfc-image-dashboard-ui | mvfc-image-delete-worker, mvfc-image-dashboard-ui | 30s |
+| `analysis-completed-topic` | mvfc-image-analysis-worker | mvfc-image-dashboard-ui | 10s |
 
 ---
 
@@ -270,8 +279,8 @@ graph TD
 | Bucket | Contents | Written by | Read by |
 |---|---|---|---|
 | `uploads` | Original image (normalized to PNG) | mvfc-image-upload-api, mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-analysis-worker, mvfc-image-dashboard-ui |
-| `thumbnails` | 200×200 JPEG thumbnails | mvfc-image-thumbnail-worker | mvfc-image-dashboard-ui |
-| `analysis-results` | JSON with AI-generated description | mvfc-image-analysis-worker | mvfc-image-dashboard-ui |
+| `thumbnails` | 200×200 PNG thumbnails | mvfc-image-thumbnail-worker | mvfc-image-dashboard-ui |
+| `analysis-results` | JSON with AI-generated description and dominant colors | mvfc-image-analysis-worker | mvfc-image-dashboard-ui |
 
 ---
 
@@ -410,6 +419,8 @@ A core principle of this project is **Data Privacy**. Because the entire pipelin
 - **Ports already in use:** If ports like `:3000`, `:5000`, or `:8081` are occupied, the containers won't start. Stop conflicting services or map different ports in `docker-compose.yml`.
 - **First run is slow:** The first time you run `./scripts/start.sh`, Docker will download the Salesforce BLIP model (~1.5GB). Subsequent starts will be immediate.
 - **Images not appearing in Dashboard:** Check if the Pub/Sub emulator and Terraform provisioning completed successfully. You can view worker logs via `docker compose logs -f`.
+- **Thumbnails not loading:** The thumbnail filename always uses `.png` extension regardless of the original file format (e.g., `thumb-{guid}-photo.png`). Verify this matches what the dashboard requests.
+- **Upload rejected with 400:** The upload validator accepts any `image/*` content type. Ensure your file is a valid image and its filename does not contain OS-reserved characters (`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`).
 
 ---
 

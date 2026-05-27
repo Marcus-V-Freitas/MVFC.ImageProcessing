@@ -47,7 +47,7 @@ public sealed class FileUploadRequestValidatorTests
         var request = new FileUploadRequest(fileName, "image/jpeg", 1024, [0x01]);
         var result = await _validator.ValidateAsync(request, TestContext.Current.CancellationToken);
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(FileUploadRequest.FileName) && e.ErrorMessage == "Nome de arquivo inválido.");
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(FileUploadRequest.FileName) && e.ErrorMessage == "Nome de arquivo inválido, contém caracteres não permitidos.");
     }
 
     [Theory]

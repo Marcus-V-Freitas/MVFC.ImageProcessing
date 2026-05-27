@@ -1,4 +1,4 @@
-namespace MVFC.Image.Infra.Tests;
+﻿namespace MVFC.Image.Infra.Tests;
 
 public sealed class PublishServiceTests
 {
@@ -16,7 +16,7 @@ public sealed class PublishServiceTests
         mockFactory.CreateAsync(Arg.Is("test-project"), Arg.Is("test-topic"))
                    .Returns(Task.FromResult(mockPublisher));
 
-        var config = new PubSubConfig("test-project", "image-upload", "file-converted", "thumbnail-created", "file-delete-requested");
+        var config = new PubSubConfig("test-project", "image-upload", "file-converted", "thumbnail-created", "analysis-completed-topic", "file-delete-requested");
         var service = new PublishService(config, mockFactory);
 
         var message = new { Text = "test" };

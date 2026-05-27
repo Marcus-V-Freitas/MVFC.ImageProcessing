@@ -1,11 +1,11 @@
-namespace MVFC.Image.Domain.Tests.Handlers;
+﻿namespace MVFC.Image.Domain.Tests.Handlers;
 
 public sealed class ImageDeletePublisherHandlerTests
 {
     private readonly IPublishService _publisher = Substitute.For<IPublishService>();
     private readonly ILogger<ImageDeletePublisherHandler> _logger = Substitute.For<ILogger<ImageDeletePublisherHandler>>();
     private readonly AppConfigDashboard _config = new(
-        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "file-delete-requested"));
+        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "analysis-completed-topic", "file-delete-requested"));
     private readonly ImageDeletePublisherHandler _sut;
 
     public ImageDeletePublisherHandlerTests() =>

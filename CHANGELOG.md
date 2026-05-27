@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.7.0] - 2026-05-26
+
+### Added
+
+- **Architecture**: Added `analysis-completed-topic` Pub/Sub topic and `mvfc-dashboard-analysis-sub` push subscription so the Dashboard is notified when AI analysis finishes.
+- **Domain**: Created `AnalysisCompletedRequest` record in `MVFC.Image.Shareable.Requests` representing the AI analysis completion event.
+- **Domain**: `ImageAnalysisHandler` now injects `IPublishService` and publishes an `AnalysisCompletedRequest` to `analysis-completed-topic` after saving the analysis JSON to GCS.
+- **Configuration**: Added `AnalysisCompletedTopic` property to `PubSubConfig` and `PubSubConfig` parameter to `AppConfigAnalysis`, applied to all `appsettings.json` files and test fixtures.
+- **IoC**: `AppAnalysisDependencies` now registers `IPublisherClientFactory`, `IPublishService`, and `PubSubConfig` for the Analysis Worker.
+- **Testing**: `ImageAnalysisHandlerTests` updated with `IPublishService` mock and an assertion verifying the `analysis-completed` event is dispatched on the success path.
+
+### Changed
+
+- **Dashboard**: Replaced polling-based gallery refresh with real-time **Server-Sent Events (SSE)**. The Dashboard now subscribes to `/events/stream` (EventSource) and refreshes the gallery only when a Pub/Sub push arrives at `/pubsub/notify`.
+- **Dashboard**: `SseClientManager` now implements `IDisposable`, completing all active channels on application shutdown for clean test teardown.
+- **Domain**: `ImageThumbnailHandler` generates thumbnails in **PNG** format (previously documented as JPEG). Thumbnail filenames follow the pattern `thumb-{baseName}.png`.
+- **Frontend**: Fixed thumbnail URL resolution in `app.js` — strips the original file extension and appends `.png` to match the backend naming convention.
+- **Validation**: `FileUploadRequestValidator` now accepts any `image/*` content type instead of a fixed whitelist, supporting all formats handled by Magick.NET (200+ formats). Filename validation regex updated to reject OS-reserved characters (`< > : " / \ | ? *`) while allowing accented characters, parentheses, and other common naming patterns.
+- **Code Quality**: Centralized `using` statements via `Usings.cs` files across all projects and test projects. Applied AAA (`// Arrange / // Act / // Assert`) comment structure to all unit and integration tests.
+
+### Fixed
+
+- **Frontend**: Dashboard thumbnail placeholder now correctly derives the `.png` filename from the original upload name, resolving the "Waiting..." state that persisted even after thumbnail generation succeeded.
+- **Validation**: Fixed `NullReferenceException` in the Content-Type validator when `ContentType` is `null`.
+
+---
+
 ## [2.6.0] - 2026-05-24
 
 ### Added

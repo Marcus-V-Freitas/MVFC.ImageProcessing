@@ -25,6 +25,8 @@ public sealed class DashboardUiFactory : IDisposable
         _client = _factory.CreateClient();
     }
 
+    public IServiceProvider Services => _factory.Services;
+
     public async Task<HttpResponseMessage> GetFilesAsync()
     {
         return await _client.GetAsync("/api/files");
@@ -33,6 +35,17 @@ public sealed class DashboardUiFactory : IDisposable
     public async Task<HttpResponseMessage> PostDeleteAsync(string fileName)
     {
         return await _client.PostAsync($"/api/delete/{fileName}", null);
+    }
+
+    public async Task<HttpResponseMessage> GetEventsStreamAsync(CancellationToken cancellationToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, "/events/stream");
+        return await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
+    public async Task<HttpResponseMessage> PostNotifyAsync()
+    {
+        return await _client.PostAsync("/pubsub/notify", null);
     }
 
     public void Dispose()

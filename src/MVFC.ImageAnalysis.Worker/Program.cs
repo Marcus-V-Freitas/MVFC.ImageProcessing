@@ -1,5 +1,5 @@
-
 var builder = WebApplication.CreateBuilder(args);
+
 await builder.Services.RegisterAnalysisServicesAsync(builder.Configuration);
 builder.Services.AddHealthChecks();
 

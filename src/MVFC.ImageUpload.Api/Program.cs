@@ -1,4 +1,3 @@
-
 var builder = WebApplication.CreateBuilder(args);
 
 const string DemoPolicy = "DemoLocalPolicy";
@@ -7,7 +6,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(DemoPolicy, policy =>
         policy
-            .WithOrigins("http://localhost:3000") // Dashboard UI — porta do docker-compose
+            .WithOrigins("http://localhost:3000")
             .AllowAnyMethod()
             .AllowAnyHeader());
 });
@@ -19,7 +18,6 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 app.UseCors(DemoPolicy);
-// ⚠️ Demo policy — use AllowedOrigins por environment em produção
 
 app.MapPost("/upload", async (IFormFile file, IMediator mediator, IValidator<FileUploadRequest> validator, CancellationToken ct) =>
 {

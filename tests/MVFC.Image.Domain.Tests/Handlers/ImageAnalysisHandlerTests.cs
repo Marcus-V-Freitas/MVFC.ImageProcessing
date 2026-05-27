@@ -3,13 +3,14 @@ namespace MVFC.Image.Domain.Tests.Handlers;
 public sealed class ImageAnalysisHandlerTests
 {
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
+    private readonly IPublishService _publisher = Substitute.For<IPublishService>();
     private readonly IVisionApiClient _visionClient = Substitute.For<IVisionApiClient>();
     private readonly ILogger<ImageAnalysisHandler> _logger = Substitute.For<ILogger<ImageAnalysisHandler>>();
-    private readonly AppConfigAnalysis _config = new("http://vision-api/test", new StorageConfig("uploads", "thumbnails", "analysis-results"));
+    private readonly AppConfigAnalysis _config = new("http://vision-api/test", new StorageConfig("uploads", "thumbnails", "analysis-results"), new PubSubConfig("p", "u", "c", "t", "analysis-completed-topic", "d"));
     private readonly ImageAnalysisHandler _sut;
 
     public ImageAnalysisHandlerTests() =>
-        _sut = new(_storage, _visionClient, _config, _logger);
+        _sut = new(_storage, _publisher, _visionClient, _config, _logger);
 
 
     [Fact]
@@ -39,6 +40,11 @@ public sealed class ImageAnalysisHandlerTests
             "application/json",
             Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == "{\"tags\":[\"test\"]}"),
             TestContext.Current.CancellationToken);
+            
+        await _publisher.Received(1).PublishAsync(
+            Arg.Is<AnalysisCompletedRequest>(evt => evt.FileName == "foto.png"),
+            "analysis-completed-topic",
+            Arg.Is<Dictionary<string, string>>(attr => attr["event-type"] == "analysis.completed"));
     }
 
     [Fact]

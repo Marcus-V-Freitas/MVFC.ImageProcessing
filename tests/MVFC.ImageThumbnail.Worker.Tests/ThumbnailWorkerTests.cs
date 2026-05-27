@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Logging;
-
-namespace MVFC.ImageThumbnail.Worker.Tests;
+﻿namespace MVFC.ImageThumbnail.Worker.Tests;
 
 public sealed class ThumbnailWorkerTests
 {

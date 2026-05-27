@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Logging;
-
-namespace MVFC.ImageDelete.Worker.Tests;
+﻿namespace MVFC.ImageDelete.Worker.Tests;
 
 public sealed class DeleteWorkerFactory : IDisposable
 {

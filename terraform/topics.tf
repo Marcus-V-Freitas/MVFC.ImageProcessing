@@ -17,3 +17,7 @@ resource "google_pubsub_topic" "file_delete_requested_topic" {
 resource "google_pubsub_topic" "dead_letter_topic" {
   name = "dead-letter-topic"
 }
+
+resource "google_pubsub_topic" "analysis_completed_topic" {
+  name = "analysis-completed-topic"
+}

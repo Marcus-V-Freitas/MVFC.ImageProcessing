@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Logging;
-
-namespace MVFC.ImageAnalysis.Worker.Tests;
+﻿namespace MVFC.ImageAnalysis.Worker.Tests;
 
 public sealed class AnalysisWorkerTests
 {
