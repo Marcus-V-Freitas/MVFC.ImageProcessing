@@ -16,8 +16,12 @@ services:
   gcs:
     image: fsouza/fake-gcs-server:latest
     container_name: gcs
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub:8681
     command: >
       -scheme http -public-host gcs:4443
+      -event.pubsub-project-id local-project
+      -event.pubsub-topic gcs-object-events
     ports:
       - "4443:4443"
     healthcheck:
@@ -25,6 +29,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    depends_on:
+      pubsub:
+        condition: service_healthy
 
   mvfc-image-vision-api:
     build:
@@ -131,4 +138,17 @@ services:
         condition: service_healthy
       gcs:
         condition: service_healthy
+
+  mvfc-gcs-router:
+    image: python:3.10-alpine
+    container_name: mvfc-gcs-router
+    volumes:
+      - ./scripts:/scripts
+    command: python /scripts/gcs_router.py
+    depends_on:
+      pubsub:
+        condition: service_healthy
+      gcs:
+        condition: service_healthy
+
 

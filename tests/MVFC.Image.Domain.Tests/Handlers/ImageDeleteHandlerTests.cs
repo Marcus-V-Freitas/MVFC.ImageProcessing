@@ -4,14 +4,14 @@ public sealed class ImageDeleteHandlerTests
 {
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
     private readonly ILogger<ImageDeleteHandler> _logger = Substitute.For<ILogger<ImageDeleteHandler>>();
-    private readonly StorageConfig _config = new("uploads", "thumbnails", "analysis-results");
+    private readonly StorageConfig _config = new("uploads", "converted", "thumbnails", "analysis-results");
     private readonly ImageDeleteHandler _sut;
 
     public ImageDeleteHandlerTests() =>
         _sut = new(_storage, _config, _logger);
 
     [Fact]
-    public async Task HandleShouldDeleteAllThreeArtifactsInParallel()
+    public async Task HandleShouldDeleteAllArtifactsInParallel()
     {
         // Arrange
         var request = new FileDeleteRequest("guid-foto.png");
@@ -22,6 +22,7 @@ public sealed class ImageDeleteHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         await _storage.Received(1).DeleteImageAsync("uploads", "guid-foto.png", TestContext.Current.CancellationToken);
+        await _storage.Received(1).DeleteImageAsync("converted", "guid-foto.png", TestContext.Current.CancellationToken);
         await _storage.Received(1).DeleteImageAsync("thumbnails", "thumb-guid-foto.png", TestContext.Current.CancellationToken);
         await _storage.Received(1).DeleteImageAsync("analysis-results", "analysis-guid-foto.png.json", TestContext.Current.CancellationToken);
     }

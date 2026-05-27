@@ -17,9 +17,6 @@ public static partial class LogDefinitions
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete artifacts for {FileName}")]
     public static partial void LogErrorDelete(this ILogger logger, Exception ex, string fileName);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "File {FileName} uploaded to GCS but Pub/Sub publish failed. File may require manual reprocessing.")]
-    public static partial void LogWarningUploadPublishFailed(this ILogger logger, Exception ex, string fileName);
-
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to list gallery objects: {Message}")]
     public static partial void LogErrorGallery(this ILogger logger, Exception ex, string message);
 

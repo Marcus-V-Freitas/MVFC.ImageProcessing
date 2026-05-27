@@ -15,7 +15,8 @@ app.MapPost("/pubsub/push", async (
         return Results.BadRequest("Payload vazio.");
 
     var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(request.Message.Data));
-    var evt = JsonSerializer.Deserialize<FileThumbnailRequest>(json);
+    var notification = JsonSerializer.Deserialize<GcsObjectNotification>(json);
+    var evt = notification?.ToFileThumbnail();
 
     if (evt is null)
     {

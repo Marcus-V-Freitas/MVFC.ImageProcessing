@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.7.0] - 2026-05-26
+## [2.8.0] - 2026-05-27
 
 ### Added
+
+- **Architecture**: Added a new GCS Router (`scripts/gcs_router.py`) for the local emulator environment to route `fake-gcs-server` generic events to per-bucket Pub/Sub topics.
+- **Infrastructure**: Added `converted` bucket to store the normalized PNG images separately from the raw `uploads`.
+- **Infrastructure**: Configured Terraform (`notifications.tf`) to natively use `google_storage_notification` for emitting `OBJECT_FINALIZE` events from GCS buckets directly to Pub/Sub topics in production.
+- **Domain**: Introduced `GcsObjectNotification` record and `GcsNotificationMapper` in `MVFC.Image.Shareable` to map GCS notification payloads to the internal pipeline requests.
+
+### Changed
+
+- **Architecture**: Shifted from manual event publishing to **GCS Object Notifications**. Workers no longer explicitly publish events (removed `IPublishService` from Upload, Converter, Thumbnail, and Analysis handlers). Writing a file to a bucket now automatically triggers the next stage via an `OBJECT_FINALIZE` event.
+- **Architecture**: Parallelized the pipeline after the format normalization stage. Both `MVFC.ImageThumbnail.Worker` and `MVFC.ImageAnalysis.Worker` now subscribe to the `file-converted-topic` and process the image concurrently.
+- **Documentation**: Completely overhauled `README.md` and `README.pt-BR.md` to document the new GCS Object Notifications architecture, the GCS Router for emulation, the parallel processing diagrams, and the updated Event Topology.
+
+### Removed
+
+- **Domain**: Removed `AnalysisCompletedRequest` as it's been replaced by generic GCS Object Notifications.
+- **Configuration**: Removed explicit topic names (`ImageUploadTopic`, `FileConvertTopic`, `ThumbnailCreatedTopic`, `AnalysisCompletedTopic`) from `PubSubConfig` except for the deletion flow, which remains user-initiated.
+
+---
+
+## [2.7.0] - 2026-05-26
 
 - **Architecture**: Added `analysis-completed-topic` Pub/Sub topic and `mvfc-dashboard-analysis-sub` push subscription so the Dashboard is notified when AI analysis finishes.
 - **Domain**: Created `AnalysisCompletedRequest` record in `MVFC.Image.Shareable.Requests` representing the AI analysis completion event.

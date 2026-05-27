@@ -15,6 +15,7 @@ public sealed class ImageDeleteHandler(
             var tasks = new List<Task>
             {
                 storage.DeleteImageAsync(storageConfig.UploadBucket, request.FileName, cancellationToken: cancellationToken),
+                storage.DeleteImageAsync(storageConfig.ConvertedBucket, request.FileName, cancellationToken: cancellationToken),
                 storage.DeleteImageAsync(storageConfig.ThumbnailBucket, thumbName, cancellationToken: cancellationToken),
                 storage.DeleteImageAsync(storageConfig.AnalysisBucket, analysisName, cancellationToken: cancellationToken),
             };

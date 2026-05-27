@@ -2,7 +2,6 @@ namespace MVFC.Image.Domain.Handlers;
 
 public sealed class ImageAnalysisHandler(
     IStorageService storage,
-    IPublishService publisher,
     IVisionApiClient visionClient,
     AppConfigAnalysis appConfig,
     ILogger<ImageAnalysisHandler> logger) : ICommandHandler<FileConvertedRequest, Result>
@@ -11,7 +10,7 @@ public sealed class ImageAnalysisHandler(
     {
         try
         {
-            var stream = await storage.DownloadImageAsync(appConfig.StorageConfig.UploadBucket, request.FileName, cancellationToken: cancellationToken);
+            var stream = await storage.DownloadImageAsync(appConfig.StorageConfig.ConvertedBucket, request.FileName, cancellationToken: cancellationToken);
             var base64Image = Convert.ToBase64String(stream.ToArray());
             var visionRequest = new VisionApiRequest(base64Image);
 
@@ -19,13 +18,6 @@ public sealed class ImageAnalysisHandler(
             var bytes = Encoding.UTF8.GetBytes(responseText);
             var analysisName = $"analysis-{request.FileName}.json";
             await storage.UploadImageAsync(appConfig.StorageConfig.AnalysisBucket, analysisName, "application/json", bytes, cancellationToken);
-
-            var completedEvent = new AnalysisCompletedRequest(request.FileName);
-            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "event-type", "analysis.completed" },
-            };
-            await publisher.PublishAsync(completedEvent, appConfig.PubSubConfig.AnalysisCompletedTopic, attributes);
 
             return Result.Ok();
         }

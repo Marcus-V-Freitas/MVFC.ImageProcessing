@@ -1,7 +1,7 @@
 # 📸 MVFC.ImageProcessing — Media Pipeline
 
 [![Coverage](https://codecov.io/gh/Marcus-V-Freitas/MVFC.ImageProcessing/branch/main/graph/badge.svg)](https://codecov.io/gh/Marcus-V-Freitas/MVFC.ImageProcessing)
-[![License](https://img.shields.io/github/license/Marcus-V-Freitas/MVFC.ImageProcessing)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 > 🇧🇷 [Leia em Português](README.pt-BR.md)
 
@@ -73,7 +73,11 @@ After startup, open the **Dashboard** at [http://localhost:3000](http://localhos
 
 ## 🏗️ Architecture Overview
 
-The pipeline follows an **event-driven microservices** architecture. Each processing stage is an independent service communicating exclusively via **Google Cloud Pub/Sub** (emulated). Files are stored in **Google Cloud Storage** (emulated via `fake-gcs-server`).
+The pipeline follows an **event-driven microservices** architecture using **GCS Object Notifications**. Each processing stage is an independent service. When a worker writes a file to a bucket, Cloud Storage automatically emits an `OBJECT_FINALIZE` notification to a Pub/Sub topic, which triggers the next stage — **workers never publish events explicitly**.
+
+Files are stored in **Google Cloud Storage** (emulated via `fake-gcs-server`) and events flow through **Google Cloud Pub/Sub** (emulated).
+
+> **⚠️ Emulator vs Production:** In production (GCP), Cloud Storage natively sends `OBJECT_FINALIZE` notifications to Pub/Sub topics via [`google_storage_notification`](https://cloud.google.com/storage/docs/pubsub-notifications). The PubSub emulator does **not** support this feature, so a lightweight **GCS Router** sidecar (`scripts/gcs_router.py`) polls a generic `gcs-object-events` topic and routes messages to the correct per-bucket topic. This router exists **only in the local/emulation environment** and is not needed in production.
 
 ```mermaid
 graph LR
@@ -81,27 +85,26 @@ graph LR
     U -->|"🗑️ Delete"| DASH
     DASH -->|POST /upload| API["mvfc-image-upload-api :8081"]
     API -->|Saves original image| GCS[("Cloud Storage")]
-    API -->|"Pub: file-uploaded"| PS{{"PubSub"}}
+    GCS -->|"OBJECT_FINALIZE"| PS{{"PubSub"}}
     PS -->|Push| CONV["mvfc-image-converter-worker :8084"]
     CONV -->|"Download + Normalize PNG"| GCS
-    CONV -->|"Pub: file-converted"| PS
+    GCS -->|"OBJECT_FINALIZE"| PS
     PS -->|Push| TW["mvfc-image-thumbnail-worker :8082"]
-    TW -->|"Download + Generate thumbnail"| GCS
-    TW -->|"Pub: thumbnail-created"| PS
     PS -->|Push| IA["mvfc-image-analysis-worker :8083"]
+    TW -->|"Download + Generate thumbnail"| GCS
     IA -->|"Download + Base64"| VA["mvfc-image-vision-api :5000"]
     VA -->|BLIP captioning| VA
     IA -->|Saves analysis.json| GCS
-    IA -->|"Pub: analysis-completed"| PS
+    GCS -->|"OBJECT_FINALIZE"| PS
     DASH -->|"Pub: file-delete-requested"| PS
     PS -->|Push| DEL["mvfc-image-delete-worker :8086"]
-    DEL -->|"Deletes from 3 buckets"| GCS
+    DEL -->|"Deletes from 4 buckets"| GCS
     PS -->|SSE Push /pubsub/notify| DASH
 
-    CONV -.->|"DLQ (after 5 fails)"| DLQ[("Dead-Letter Topic")]
-    TW -.->|"DLQ (after 5 fails)"| DLQ
-    IA -.->|"DLQ (after 5 fails)"| DLQ
-    DEL -.->|"DLQ (after 5 fails)"| DLQ
+    CONV -..->|"DLQ (after 5 fails)"| DLQ[("Dead-Letter Topic")]
+    TW -..->|"DLQ (after 5 fails)"| DLQ
+    IA -..->|"DLQ (after 5 fails)"| DLQ
+    DEL -..->|"DLQ (after 5 fails)"| DLQ
 ```
 
 ---
@@ -110,16 +113,17 @@ graph LR
 
 | Component | Technology | Port | Responsibility |
 |---|---|---|---|
-| **mvfc-image-upload-api** | .NET 10 Minimal API | `:8081` | Receives uploads, saves to GCS, emits event |
-| **mvfc-image-converter-worker** | .NET 10 + Magick.NET | `:8084` | Normalizes any format → PNG |
+| **mvfc-image-upload-api** | .NET 10 Minimal API | `:8081` | Receives uploads, saves to GCS (triggers pipeline via notification) |
+| **mvfc-image-converter-worker** | .NET 10 + Magick.NET | `:8084` | Normalizes any format → PNG, saves to `converted` bucket |
 | **mvfc-image-thumbnail-worker** | .NET 10 + Magick.NET | `:8082` | Generates 200×200 PNG thumbnail |
-| **mvfc-image-analysis-worker** | .NET 10 + Refit | `:8083` | Sends image to AI vision API, publishes `analysis-completed` event |
+| **mvfc-image-analysis-worker** | .NET 10 + Refit | `:8083` | Sends converted image to AI vision API, saves analysis JSON |
 | **mvfc-image-vision-api** | Python 3.12 + Flask + BLIP | `:5000` | Generates natural language description |
-| **mvfc-image-delete-worker** | .NET 10 | `:8086` | Deletes image from all 3 buckets |
+| **mvfc-image-delete-worker** | .NET 10 | `:8086` | Deletes image from all 4 buckets |
 | **mvfc-image-dashboard-ui** | .NET 10 + HTML/JS | `:3000` | Visual interface with gallery and controls |
+| **mvfc-gcs-router** | Python 3.10 (emulator only) | — | Routes GCS notifications to per-bucket Pub/Sub topics |
 | **PubSub Emulator** | thekevjames/gcloud-pubsub-emulator | `:8681` | Event bus (emulated) |
-| **Cloud Storage** | fake-gcs-server | `:4443` | Object storage (emulated) |
-| **Terraform** | HCL | — | Provisions topics, subscriptions, and buckets |
+| **Cloud Storage** | fake-gcs-server | `:4443` | Object storage (emulated, with notification support) |
+| **Terraform** | HCL | — | Provisions topics, subscriptions, buckets, and notifications |
 
 ---
 
@@ -127,7 +131,9 @@ graph LR
 
 ### 1. Upload & Full Processing
 
-This is the main flow. When a user uploads an image, it passes through **4 sequential stages**, each triggered by a Pub/Sub event.
+This is the main flow. When a user uploads an image, it passes through **3 processing stages**. Each stage is triggered automatically by a **GCS Object Notification** (`OBJECT_FINALIZE`) — workers never publish events; they simply write files to the appropriate bucket and the notification triggers the next stage.
+
+> **Key change:** After conversion, the **Thumbnail** and **AI Analysis** stages now run **in parallel** (both subscribe to `file-converted-topic`), reducing total processing time.
 
 ```mermaid
 sequenceDiagram
@@ -144,34 +150,39 @@ sequenceDiagram
     U->>D: Drag & Drop "photo.avif"
     D->>API: POST /upload (multipart)
     API->>GCS: Upload → uploads/{guid}-photo.avif
-    API->>PS: Pub "file-uploaded-topic"
     API-->>D: 202 Accepted
+
+    Note over GCS,PS: OBJECT_FINALIZE (uploads bucket)
+    GCS->>PS: Notification → "file-uploaded-topic"
 
     Note over PS,CONV: ① Normalization
 
     PS->>CONV: Push /pubsub/push
     CONV->>GCS: Download uploads/{guid}-photo.avif
     CONV->>CONV: MagickImage → Format = PNG
-    CONV->>GCS: Overwrites uploads/{guid}-photo.avif (now PNG)
-    CONV->>PS: Pub "file-converted-topic"
+    CONV->>GCS: Upload → converted/{guid}-photo.avif (PNG)
 
-    Note over PS,TW: ② Thumbnail
+    Note over GCS,PS: OBJECT_FINALIZE (converted bucket)
+    GCS->>PS: Notification → "file-converted-topic"
 
-    PS->>TW: Push /pubsub/push
-    TW->>GCS: Download uploads/{guid}-photo.avif (PNG)
-    TW->>TW: MagickImage → Resize(200,200) + PNG
-    TW->>GCS: Upload thumbnails/thumb-{guid}-photo.png
-    TW->>PS: Pub "thumbnail-created-topic"
+    Note over PS,TW: ② Thumbnail (parallel)
+    Note over PS,IA: ③ AI Analysis (parallel)
 
-    Note over PS,VA: ③ AI Analysis
+    par Thumbnail generation
+        PS->>TW: Push /pubsub/push
+        TW->>GCS: Download converted/{guid}-photo.avif (PNG)
+        TW->>TW: MagickImage → Resize(200,200) + PNG
+        TW->>GCS: Upload thumbnails/thumb-{guid}-photo.png
+    and AI Analysis
+        PS->>IA: Push /pubsub/push
+        IA->>GCS: Download converted/{guid}-photo.avif
+        IA->>VA: POST /analyze (base64)
+        VA->>VA: BLIP image captioning (~3-5s)
+        VA-->>IA: {"description": "...", "dominant_colors": [...]}
+        IA->>GCS: Upload analysis-results/analysis-{guid}-photo.avif.json
+    end
 
-    PS->>IA: Push /pubsub/push
-    IA->>GCS: Download uploads/{guid}-photo.avif
-    IA->>VA: POST /analyze (base64)
-    VA->>VA: BLIP image captioning (~3-5s)
-    VA-->>IA: {"description": "...", "dominant_colors": [...]}
-    IA->>GCS: Upload analysis-results/analysis-{guid}-photo.avif.json
-    IA->>PS: Pub "analysis-completed-topic"
+    Note over GCS,PS: OBJECT_FINALIZE notifications for thumbnails & analysis-results
 
     Note over D: ④ Dashboard updates via SSE (real-time)
     PS->>D: Push /pubsub/notify → gallery-updated event
@@ -180,7 +191,9 @@ sequenceDiagram
 
 ### 2. Image Deletion
 
-The user can delete any image directly from the interface. Deletion removes **all related artifacts** from all 3 buckets at once.
+The user can delete any image directly from the interface. Deletion removes **all related artifacts** from all 4 buckets at once.
+
+> **Note:** Deletion is the only flow that still uses explicit Pub/Sub publishing (from the Dashboard), since it is a user-initiated action and not a GCS write event.
 
 ```mermaid
 sequenceDiagram
@@ -199,6 +212,7 @@ sequenceDiagram
     
     par Parallel deletion
         DW->>GCS: DELETE uploads/{fileName}
+        DW->>GCS: DELETE converted/{fileName}
         DW->>GCS: DELETE thumbnails/thumb-{fileName}
         DW->>GCS: DELETE analysis-results/analysis-{fileName}.json
     end
@@ -210,7 +224,7 @@ sequenceDiagram
 
 ### 3. Format Normalization (Detail)
 
-The converter is the **first stage** of the pipeline. It ensures that regardless of the original format (AVIF, HEIC, TIFF, BMP...), all downstream files are treated as PNG.
+The converter is the **first stage** of the pipeline. It ensures that regardless of the original format (AVIF, HEIC, TIFF, BMP...), all downstream files are treated as PNG. The converted file is saved to a **dedicated `converted` bucket**, preserving the original in `uploads`.
 
 ```mermaid
 sequenceDiagram
@@ -218,14 +232,14 @@ sequenceDiagram
     participant CONV as mvfc-image-converter-worker
     participant GCS as Cloud Storage
 
-    PS->>CONV: Push (file-uploaded)
-    CONV->>GCS: Download original image
+    PS->>CONV: Push (file-uploaded via GCS notification)
+    CONV->>GCS: Download from uploads/ bucket
     
     alt Supported format (AVIF, HEIC, TIFF, WebP, BMP...)
         CONV->>CONV: new MagickImage(stream)
         CONV->>CONV: image.Format = MagickFormat.Png
-        CONV->>GCS: Overwrites same file as PNG
-        CONV->>PS: Pub "file-converted-topic" ✅
+        CONV->>GCS: Upload to converted/ bucket as PNG
+        Note over GCS,PS: OBJECT_FINALIZE triggers file-converted-topic ✅
     else Corrupted or invalid file
         CONV->>CONV: catch(Exception)
         CONV->>CONV: Log critical error
@@ -235,22 +249,53 @@ sequenceDiagram
     end
 ```
 
-> **Why normalize?** Browsers cannot natively display formats like TIFF, HEIC, or BMP. By converting everything to PNG at the beginning of the pipeline, we ensure the original image displayed in the Dashboard **always works** — no broken image icons.
+> **Why normalize?** Browsers cannot natively display formats like TIFF, HEIC, or BMP. By converting everything to PNG at the beginning of the pipeline, we ensure the image displayed in the Dashboard **always works** — no broken image icons.
+
+### 4. GCS Router (Emulator Only)
+
+In production GCP, `google_storage_notification` resources automatically send `OBJECT_FINALIZE` events from buckets to Pub/Sub topics. The `fake-gcs-server` emulator supports sending events to a **single generic topic** (`gcs-object-events`), but cannot route to different topics per bucket.
+
+The **GCS Router** (`scripts/gcs_router.py`) bridges this gap:
+
+```mermaid
+sequenceDiagram
+    participant GCS as fake-gcs-server
+    participant GENERIC as gcs-object-events topic
+    participant ROUTER as mvfc-gcs-router
+    participant TARGET as Per-Bucket Topic
+
+    GCS->>GENERIC: OBJECT_FINALIZE (any bucket)
+    ROUTER->>GENERIC: Pull messages
+    ROUTER->>ROUTER: Inspect payload.bucket
+    
+    alt bucket = "uploads"
+        ROUTER->>TARGET: Publish → file-uploaded-topic
+    else bucket = "converted"
+        ROUTER->>TARGET: Publish → file-converted-topic
+    else bucket = "thumbnails"
+        ROUTER->>TARGET: Publish → thumbnail-created-topic
+    else bucket = "analysis-results"
+        ROUTER->>TARGET: Publish → analysis-completed-topic
+    end
+```
+
+> **This component does not exist in production.** In GCP, each `google_storage_notification` resource sends events directly to the correct topic. The Terraform configuration includes these resources but skips them locally via `count = var.is_local ? 0 : 1`.
 
 ---
 
 ## 🧩 Event Topology (Pub/Sub)
 
-Each arrow represents a Pub/Sub topic with its respective push subscription.
+Each arrow represents a Pub/Sub topic with its respective push subscription. **Events are produced by GCS Object Notifications** (not by workers), except for the delete flow which is user-initiated.
 
 ```mermaid
 graph TD
-    T1["file-uploaded-topic"] -->|mvfc-image-converter-worker-sub| CONV["mvfc-image-converter-worker"]
-    CONV --> T2["file-converted-topic"]
+    GCS[("Cloud Storage")] -->|"OBJECT_FINALIZE"| T1["file-uploaded-topic"]
+    T1 -->|mvfc-image-converter-worker-sub| CONV["mvfc-image-converter-worker"]
+    GCS -->|"OBJECT_FINALIZE"| T2["file-converted-topic"]
     T2 -->|mvfc-image-thumbnail-worker-sub| TW["mvfc-image-thumbnail-worker"]
-    TW --> T3["thumbnail-created-topic"]
-    T3 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
-    IA --> T5["analysis-completed-topic"]
+    T2 -->|mvfc-image-analysis-worker-sub| IA["mvfc-image-analysis-worker"]
+    GCS -->|"OBJECT_FINALIZE"| T3["thumbnail-created-topic"]
+    GCS -->|"OBJECT_FINALIZE"| T5["analysis-completed-topic"]
     T5 -->|mvfc-dashboard-analysis-sub| DASH["mvfc-image-dashboard-ui"]
     T4["file-delete-requested-topic"] -->|mvfc-image-delete-worker-sub| DEL["mvfc-image-delete-worker"]
     T1 -->|mvfc-dashboard-upload-sub| DASH
@@ -258,29 +303,31 @@ graph TD
     T3 -->|mvfc-dashboard-thumbnail-sub| DASH
     T4 -->|mvfc-dashboard-delete-sub| DASH
 
-    CONV -.->|Max retries| DLQ["dead-letter-topic"]
-    TW -.->|Max retries| DLQ
-    IA -.->|Max retries| DLQ
-    DEL -.->|Max retries| DLQ
+    CONV -..->|Max retries| DLQ["dead-letter-topic"]
+    TW -..->|Max retries| DLQ
+    IA -..->|Max retries| DLQ
+    DEL -..->|Max retries| DLQ
 ```
 
-| Topic | Producer | Consumer | Ack Deadline |
+| Topic | Trigger | Consumer | Ack Deadline |
 |---|---|---|---|
-| `file-uploaded-topic` | mvfc-image-upload-api | mvfc-image-converter-worker, mvfc-image-dashboard-ui | 60s |
-| `file-converted-topic` | mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-dashboard-ui | 600s |
-| `thumbnail-created-topic` | mvfc-image-thumbnail-worker | mvfc-image-analysis-worker, mvfc-image-dashboard-ui | 600s |
-| `file-delete-requested-topic` | mvfc-image-dashboard-ui | mvfc-image-delete-worker, mvfc-image-dashboard-ui | 30s |
-| `analysis-completed-topic` | mvfc-image-analysis-worker | mvfc-image-dashboard-ui | 10s |
+| `file-uploaded-topic` | GCS notification (`uploads` bucket) | mvfc-image-converter-worker, mvfc-image-dashboard-ui | 60s |
+| `file-converted-topic` | GCS notification (`converted` bucket) | mvfc-image-thumbnail-worker, mvfc-image-analysis-worker, mvfc-image-dashboard-ui | 600s |
+| `thumbnail-created-topic` | GCS notification (`thumbnails` bucket) | mvfc-image-dashboard-ui | 600s |
+| `analysis-completed-topic` | GCS notification (`analysis-results` bucket) | mvfc-image-dashboard-ui | 10s |
+| `file-delete-requested-topic` | mvfc-image-dashboard-ui (explicit publish) | mvfc-image-delete-worker, mvfc-image-dashboard-ui | 30s |
+| `gcs-object-events` | fake-gcs-server (emulator only) | mvfc-gcs-router | — |
 
 ---
 
 ## 🗄️ Buckets (Cloud Storage)
 
-| Bucket | Contents | Written by | Read by |
-|---|---|---|---|
-| `uploads` | Original image (normalized to PNG) | mvfc-image-upload-api, mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-analysis-worker, mvfc-image-dashboard-ui |
-| `thumbnails` | 200×200 PNG thumbnails | mvfc-image-thumbnail-worker | mvfc-image-dashboard-ui |
-| `analysis-results` | JSON with AI-generated description and dominant colors | mvfc-image-analysis-worker | mvfc-image-dashboard-ui |
+| Bucket | Contents | Written by | Read by | GCS Notification → Topic |
+|---|---|---|---|---|
+| `uploads` | Original image (any format) | mvfc-image-upload-api | mvfc-image-converter-worker | `file-uploaded-topic` |
+| `converted` | Normalized PNG image | mvfc-image-converter-worker | mvfc-image-thumbnail-worker, mvfc-image-analysis-worker, mvfc-image-dashboard-ui | `file-converted-topic` |
+| `thumbnails` | 200×200 PNG thumbnails | mvfc-image-thumbnail-worker | mvfc-image-dashboard-ui | `thumbnail-created-topic` |
+| `analysis-results` | JSON with AI-generated description and dominant colors | mvfc-image-analysis-worker | mvfc-image-dashboard-ui | `analysis-completed-topic` |
 
 ---
 
@@ -320,11 +367,17 @@ Discarded alternatives:
 
 The `mvfc-image-analysis-worker` uses [Refit](https://github.com/reactiveui/refit) to call the Python Vision API. This provides a type-safe, declarative HTTP client via an interface (`IVisionApiClient`), replacing raw `HttpClient` calls and making the service easier to test and maintain.
 
-### Why Pub/Sub + Push?
+### Why GCS Object Notifications?
 
-- **Total decoupling**: Each worker is independent and can scale or fail without affecting the others.
-- **Push vs Pull**: We use push subscriptions for simplicity — each worker is a Minimal API that exposes a `/pubsub/push` endpoint. The emulator handles delivery automatically.
-- **Automatic retry**: If a worker is unavailable, Pub/Sub redelivers the message after the `ack_deadline_seconds`.
+Instead of having each worker explicitly publish to the next Pub/Sub topic, we leverage **GCS Object Notifications** (`OBJECT_FINALIZE`). This means:
+
+- **Zero coupling between stages**: Workers only need to know *which bucket to write to*. They don't need Pub/Sub clients, topic names, or publishing logic.
+- **Simpler handlers**: Domain handlers no longer depend on `IPublishService` — they just store files and return.
+- **Automatic event emission**: Writing a file to a bucket is enough to trigger the next stage. The GCS → Pub/Sub integration is managed at the infrastructure level (Terraform).
+- **Push subscriptions**: Each worker is a Minimal API exposing a `/pubsub/push` endpoint. Pub/Sub delivers messages automatically.
+- **Automatic retry**: If a worker is unavailable, Pub/Sub redelivers the message after `ack_deadline_seconds`.
+
+> **Emulator note:** Since `fake-gcs-server` cannot route to per-bucket topics, the `mvfc-gcs-router` sidecar handles this routing locally. In production, `google_storage_notification` Terraform resources handle it natively.
 
 ### Why Local Emulators?
 
@@ -358,18 +411,18 @@ MVFC.ImageProcessing/
 │   ├── MVFC.Image.Domain/                 # Core business logic, Contracts and CQRS Handlers
 │   ├── MVFC.Image.Infra/                  # GCP Implementations (Storage and Pub/Sub)
 │   ├── MVFC.Image.IoC/                    # Dependency Injection and Configuration
-│   ├── MVFC.Image.Shareable/              # Shared events and DTOs
+│   ├── MVFC.Image.Shareable/              # Shared events, DTOs and GCS notification mapper
 │   ├── MVFC.ImageUpload.Api/              # Receives uploads via HTTP
-│   ├── MVFC.ImageConverter.Worker/        # Normalizes any format → PNG
+│   ├── MVFC.ImageConverter.Worker/        # Normalizes any format → PNG (saves to converted bucket)
 │   ├── MVFC.ImageThumbnail.Worker/        # Generates 200×200 thumbnails
 │   ├── MVFC.ImageAnalysis.Worker/         # Orchestrates AI analysis (Refit + Polly)
 │   ├── MVFC.ImageVision.Api/              # BLIP model (Python/Flask)
-│   ├── MVFC.ImageDelete.Worker/           # Deletes files from 3 buckets
+│   ├── MVFC.ImageDelete.Worker/           # Deletes files from 4 buckets
 │   └── MVFC.ImageDashboard.UI/            # Web interface (HTML/JS)
 ├── tests/
 │   ├── MVFC.Image.Domain.Tests/           # Unit tests for Domain layer
 │   ├── MVFC.Image.Infra.Tests/            # Unit tests for Infra layer
-│   ├── MVFC.Image.Shareable.Tests/        # Unit tests for Shareable layer
+│   ├── MVFC.Image.Shareable.Tests/        # Unit tests for Shareable layer (incl. GcsNotificationMapper)
 │   ├── MVFC.ImageUpload.Api.Tests/        # Integration tests for Upload API
 │   ├── MVFC.ImageConverter.Worker.Tests/  # Integration tests for Converter Worker
 │   ├── MVFC.ImageThumbnail.Worker.Tests/  # Integration tests for Thumbnail Worker
@@ -379,8 +432,9 @@ MVFC.ImageProcessing/
 ├── scripts/
 │   ├── start.sh                           # Start all infrastructure
 │   ├── stop.sh                            # Tear down everything
+│   ├── gcs_router.py                      # GCS notification router (emulator only)
 │   └── mvfc.image-processing.http         # HTTP request samples
-├── terraform/                             # IaC: topics, subs, buckets
+├── terraform/                             # IaC: topics, subs, buckets, notifications
 ├── samples/                               # Sample images for testing
 ├── docker-compose.yml                     # Container orchestration
 ├── MVFC.ImageProcessing.slnx              # Solution file
@@ -399,8 +453,11 @@ MVFC.ImageProcessing/
 ## ⚙️ Advanced Architecture Patterns
 
 This project implements enterprise-grade distributed system patterns:
+- **GCS Object Notifications:** Workers don't publish events — they write files to buckets, and GCS automatically emits `OBJECT_FINALIZE` notifications to the corresponding Pub/Sub topic. This eliminates `IPublishService` from all handlers (except the Dashboard's delete flow) and reduces coupling.
+- **GCS Notification Router (Emulator):** Since the `fake-gcs-server` emulator can only publish to a single generic topic, a lightweight Python sidecar (`scripts/gcs_router.py`) polls `gcs-object-events` and re-publishes to the correct per-bucket topic. This component is conditionally deployed and has no equivalent in production.
 - **Dead-Letter Queues (DLQ):** Configured via Terraform. If a worker fails to process a poison message (e.g., an invalid file) 5 times, it is safely routed to the `dead-letter-topic` instead of causing infinite retries.
 - **Circuit Breakers & Retries:** The HTTP calls to the Vision API are wrapped with `Microsoft.Extensions.Http.Resilience`, providing automatic retries, timeouts, and circuit breakers against transient AI model failures.
+- **Parallel Processing:** After conversion, Thumbnail and Analysis workers both subscribe to `file-converted-topic` and run concurrently, reducing total pipeline latency.
 
 ---
 

@@ -1,4 +1,4 @@
-﻿namespace MVFC.Image.Domain.Tests.Handlers;
+namespace MVFC.Image.Domain.Tests.Handlers;
 
 public sealed class ImageThumbnailHandlerTests
 {
@@ -11,18 +11,16 @@ public sealed class ImageThumbnailHandlerTests
     ];
 
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
-    private readonly IPublishService _publisher = Substitute.For<IPublishService>();
     private readonly ILogger<ImageThumbnailHandler> _logger = Substitute.For<ILogger<ImageThumbnailHandler>>();
     private readonly AppConfigThumbnail _config = new(
-        new PubSubConfig("proj-test", "image-upload", "file-converted", "thumbnail-created", "analysis-completed-topic", "file-delete-requested"),
-        new StorageConfig("uploads", "thumbnails", "analysis-results"));
+        new StorageConfig("uploads", "converted", "thumbnails", "analysis-results"));
     private readonly ImageThumbnailHandler _sut;
 
     public ImageThumbnailHandlerTests() =>
-        _sut = new(_storage, _publisher, _config, _logger);
+        _sut = new(_storage, _config, _logger);
 
     [Fact]
-    public async Task HandleSuccessPathShouldResizeImageAndPublishEvent()
+    public async Task HandleSuccessPathShouldResizeImage()
     {
         // Arrange
         var request = new FileThumbnailRequest("foto.png", "image/png", ValidImageBytes.Length, "uploads", DateTime.UtcNow);
@@ -45,11 +43,6 @@ public sealed class ImageThumbnailHandlerTests
             "image/png",
             Arg.Is<byte[]>(b => b != null && b.Length > 0),
             TestContext.Current.CancellationToken);
-
-        await _publisher.Received(1).PublishAsync(
-            request,
-            "thumbnail-created",
-            Arg.Is<IReadOnlyDictionary<string, string>>(d => d["event-type"] == "thumbnail-created"));
     }
 
     [Fact]

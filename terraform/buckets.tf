@@ -15,3 +15,9 @@ resource "google_storage_bucket" "analysis_results" {
   location      = "US"
   force_destroy = true
 }
+
+resource "google_storage_bucket" "converted" {
+  name          = "converted"
+  location      = "US"
+  force_destroy = true
+}

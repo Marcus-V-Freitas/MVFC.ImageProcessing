@@ -2,7 +2,6 @@ namespace MVFC.Image.Domain.Handlers;
 
 public sealed class ImageConverterHandler(
     IStorageService storage,
-    IPublishService publisher,
     AppConfigConverter appConfig,
     ILogger<ImageConverterHandler> logger) : ICommandHandler<FileUploadedRequest, Result>
 {
@@ -16,22 +15,7 @@ public sealed class ImageConverterHandler(
             image.Format = MagickFormat.Png;
             var bytes = image.ToByteArray();
 
-            await storage.UploadImageAsync(request.Bucket, request.FileName, "image/png", bytes, cancellationToken: cancellationToken);
-
-            var newEvt = new FileUploadedRequest(
-                FileName: request.FileName,
-                ContentType: "image/png",
-                Size: bytes.Length,
-                Bucket: request.Bucket,
-                UploadedAt: request.UploadedAt
-            );
-
-            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "event-type", "file.png.converted" },
-            };
-
-            await publisher.PublishAsync(newEvt, appConfig.PubSubConfig.FileConvertTopic, attributes);
+            await storage.UploadImageAsync(appConfig.StorageConfig.ConvertedBucket, request.FileName, "image/png", bytes, cancellationToken: cancellationToken);
 
             return Result.Ok();
         }

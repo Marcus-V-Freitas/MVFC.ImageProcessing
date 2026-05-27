@@ -9,12 +9,8 @@ public static class AppConverterDependencies
 
         services.AddSingleton(appConfig);
         services.AddSingleton(Options.Create(appConfig));
-        services.AddSingleton(appConfig.PubSubConfig);
 
         services.AddMediatorSpecificHandlers(typeof(ImageConverterHandler));
         await services.AddStorageServiceDependenciesAsync();
-
-        services.AddSingleton<IPublisherClientFactory, PublisherClientFactory>();
-        services.AddScoped<IPublishService, PublishService>();
     }
 }

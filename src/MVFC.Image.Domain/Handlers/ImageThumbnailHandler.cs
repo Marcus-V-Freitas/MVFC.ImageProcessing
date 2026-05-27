@@ -2,7 +2,6 @@ namespace MVFC.Image.Domain.Handlers;
 
 public sealed class ImageThumbnailHandler(
     IStorageService storage,
-    IPublishService publisher,
     AppConfigThumbnail appConfig,
     ILogger<ImageThumbnailHandler> logger) : ICommandHandler<FileThumbnailRequest, Result>
 {
@@ -21,13 +20,6 @@ public sealed class ImageThumbnailHandler(
             var baseName = Path.GetFileNameWithoutExtension(request.FileName);
             var thumbName = $"thumb-{baseName}.png";
             await storage.UploadImageAsync(appConfig.StorageConfig.ThumbnailBucket, thumbName, "image/png", bytes, cancellationToken: cancellationToken);
-
-            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "event-type", "thumbnail-created" },
-            };
-
-            await publisher.PublishAsync(request, appConfig.PubSubConfig.ThumbnailCreatedTopic, attributes);
 
             return Result.Ok();
         }

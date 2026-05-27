@@ -1,4 +1,4 @@
-﻿namespace MVFC.ImageAnalysis.Worker.Tests;
+namespace MVFC.ImageAnalysis.Worker.Tests;
 
 public sealed class AnalysisWorkerTests
 {
@@ -40,7 +40,7 @@ public sealed class AnalysisWorkerTests
             .Returns(new ValueTask<Result>(Result.Ok()));
         using var factory = new AnalysisWorkerFactory(mockMediator);
 
-        var payload = new FileConvertedRequest("test.png", "image/png", 100, "uploads", DateTime.UtcNow);
+        var payload = new GcsObjectNotification("test.png", "uploads", "image/png", "100", DateTime.UtcNow);
         var base64Data = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload)));
         var pubsubRequest = new PubSubRequest(
             new PubSubMessageRequest(base64Data, "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),
@@ -140,7 +140,7 @@ public sealed class AnalysisWorkerTests
             .Returns(new ValueTask<Result>(Result.Fail("Error occurred")));
         using var factory = new AnalysisWorkerFactory(mockMediator);
 
-        var failPayload = new FileConvertedRequest("fail.png", "image/png", 100, "uploads", DateTime.UtcNow);
+        var failPayload = new GcsObjectNotification("fail.png", "uploads", "image/png", "100", DateTime.UtcNow);
         var failBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(failPayload)));
         var failRequest = new PubSubRequest(
             new PubSubMessageRequest(failBase64, "msg-123", "2026-05-19T20:00:00Z", new Dictionary<string, string>()),

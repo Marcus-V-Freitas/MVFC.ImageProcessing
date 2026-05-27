@@ -21,3 +21,8 @@ resource "google_pubsub_topic" "dead_letter_topic" {
 resource "google_pubsub_topic" "analysis_completed_topic" {
   name = "analysis-completed-topic"
 }
+
+resource "google_pubsub_topic" "gcs_events" {
+  count = var.is_local ? 1 : 0
+  name  = "gcs-object-events"
+}

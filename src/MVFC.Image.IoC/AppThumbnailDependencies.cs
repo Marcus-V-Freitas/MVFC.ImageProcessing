@@ -9,12 +9,8 @@ public static class AppThumbnailDependencies
 
         services.AddSingleton(appConfig);
         services.AddSingleton(Options.Create(appConfig));
-        services.AddSingleton(appConfig.PubSubConfig);
 
         services.AddMediatorSpecificHandlers(typeof(ImageThumbnailHandler));
         await services.AddStorageServiceDependenciesAsync();
-
-        services.AddSingleton<IPublisherClientFactory, PublisherClientFactory>();
-        services.AddScoped<IPublishService, PublishService>();
     }
 }
