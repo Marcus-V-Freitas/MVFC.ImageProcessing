@@ -14,7 +14,10 @@ git clone https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing.git
 cd MVFC.ImageProcessing
 
 # Start all containers + infrastructure
+# Linux / macOS
 ./scripts/start.sh
+# Windows (PowerShell)
+.\scripts\start.ps1
 
 # (Optional) Build .NET projects locally
 dotnet restore MVFC.ImageProcessing.slnx

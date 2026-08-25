@@ -44,15 +44,21 @@ git clone https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing.git
 cd MVFC.ImageProcessing
 
 # Subir todos os containers + provisionar infraestrutura
+# Linux / macOS
 ./scripts/start.sh
+# Windows (PowerShell)
+.\scripts\start.ps1
 
-# Parar tudo e limpar
+# Para parar:
+# Linux / macOS
 ./scripts/stop.sh
+# Windows (PowerShell)
+.\scripts\stop.ps1
 ```
 
 O script `start.sh` executa os seguintes passos na ordem:
 
-1. Verifica a infraestrutura existente (use `./scripts/start.sh --clean` para recriar do zero)
+1. Verifica a infraestrutura existente (use `./scripts/start.sh --clean` ou `.\scripts\start.ps1 --clean` para recriar do zero)
 2. Builda e atualiza apenas os serviços modificados via `docker compose up -d --build`
 3. Aguarda os health checks do PubSub, GCS e Vision API
 4. Executa `terraform init && terraform apply` para garantir os tópicos, subscriptions e buckets
@@ -430,8 +436,8 @@ MVFC.ImageProcessing/
 │   ├── MVFC.ImageDelete.Worker.Tests/     # Testes de integração do Delete
 │   └── MVFC.ImageDashboard.UI.Tests/      # Testes de integração do Dashboard UI
 ├── scripts/
-│   ├── start.sh                           # Sobe toda a infraestrutura
-│   ├── stop.sh                            # Derruba tudo
+│   ├── start.sh / start.ps1               # Sobe toda a infraestrutura
+│   ├── stop.sh / stop.ps1                 # Derruba tudo
 │   ├── gcs_router.py                      # Roteador de notificações GCS (apenas emulador)
 │   └── mvfc.image-processing.http         # Amostras de requisições HTTP
 ├── terraform/                             # IaC: tópicos, subs, buckets, notificações
@@ -474,7 +480,7 @@ Um princípio central deste projeto é a **Privacidade de Dados**. Como todo o p
 ## 🚑 Solução de Problemas
 
 - **Portas em uso:** Se portas como `:3000`, `:5000` ou `:8081` estiverem ocupadas, os containers não iniciarão. Pare os serviços conflitantes ou mapeie portas diferentes no `docker-compose.yml`.
-- **A primeira execução é demorada:** Na primeira vez que você rodar `./scripts/start.sh`, o Docker baixará o modelo Salesforce BLIP (~1,5 GB). As inicializações subsequentes serão imediatas.
+- **A primeira execução é demorada:** Na primeira vez que você rodar o script de inicialização (`start.sh` ou `start.ps1`), o Docker baixará o modelo Salesforce BLIP (~1,5 GB). As inicializações subsequentes serão imediatas.
 - **Imagens não aparecem no Dashboard:** Verifique se o emulador Pub/Sub e o provisionamento do Terraform foram concluídos com sucesso. Você pode ver os logs dos workers via `docker compose logs -f`.
 - **Thumbnails não carregam:** O nome do thumbnail sempre usa a extensão `.png` independente do formato original (ex: `thumb-{guid}-foto.png`). Verifique se o Dashboard está buscando pelo nome correto.
 - **Upload rejeitado com 400:** O validador aceita qualquer `image/*`. Certifique-se de que o arquivo é uma imagem válida e que o nome não contém caracteres reservados pelo OS (`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`).

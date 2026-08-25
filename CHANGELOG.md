@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.0] - 2026-08-24
+
+### Added
+
+- **Dependencies**: Enabled central package transitive pinning (`CentralPackageTransitivePinningEnabled`).
+- **Dependencies**: Added `SSH.NET` v2026.0.0.
+- **Infrastructure**: Added `start.ps1` and `stop.ps1` PowerShell scripts to support running the local environment natively on Windows.
+- **Documentation**: Updated `README.md`, `README.pt-BR.md`, and `CONTRIBUTING.md` with instructions on how to use the new Windows PowerShell scripts.
+
+### Changed
+
+- **Dependencies**: Updated `Magick.NET-Q8-AnyCPU` to v14.16.0.
+- **Dependencies**: Updated `Refit` and `Refit.HttpClientFactory` to v10.2.0.
+
+---
+
 ## [2.8.0] - 2026-05-27
 
 ### Added
@@ -223,6 +239,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.9.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.9.0
+[2.8.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.8.0
+[2.7.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.7.0
+[2.6.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.6.0
 [2.5.1]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.5.1
 [2.5.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.5.0
 [2.4.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.4.0
