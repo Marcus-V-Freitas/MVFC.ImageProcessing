@@ -29,11 +29,11 @@ jobs:
         with:
           dotnet-version: "11.0.x"
 
-      - name: Install Cake
-        run: dotnet tool install --global Cake.Tool
+      - name: Restaurar ferramentas .NET com versões fixadas
+        run: dotnet tool restore
 
-      - name: Run Cake
-        run: dotnet-cake build.cake
+      - name: Executar Cake (build, testes e cobertura)
+        run: dotnet tool run dotnet-cake -- build.cake
 
       - name: Publish summary
         if: always()
