@@ -5,7 +5,7 @@ public static class AppDeleteDependencies
     public static async Task RegisterDeleteServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
         var storageConfig = configuration.GetRequiredConfig<StorageConfig>("StorageConfig");
-        Validator.ValidateObject(storageConfig, new ValidationContext(storageConfig), validateAllProperties: true);
+        await Validator.ValidateObjectAsync(storageConfig, new ValidationContext(storageConfig), validateAllProperties: true);
 
         services.AddSingleton(storageConfig);
         services.AddSingleton(Options.Create(storageConfig));

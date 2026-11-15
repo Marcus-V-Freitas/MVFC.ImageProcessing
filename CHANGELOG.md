@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.0] - 2026-11-15
+
+### Added
+
+- **Infrastructure**: Added `MVFC.Pack.Analyzers` reference in `Directory.Build.targets` for all non-test projects, using `IsTestProject` property condition for more reliable filtering.
+
+### Changed
+
+- **Platform**: Migrated entire solution from **.NET 10 to .NET 11** (`TargetFramework` updated to `net11.0` in `Directory.Build.props`).
+- **Infrastructure**: Updated all `Dockerfile`s (Analysis, Converter, Dashboard, Delete, Thumbnail, Upload) from `mcr.microsoft.com/dotnet/sdk:10.0-alpine` and `aspnet:10.0-alpine` to `sdk:11.0-alpine` and `aspnet:11.0-alpine`.
+- **Dependencies**: Updated `Microsoft.AspNetCore.Mvc.Testing` from `10.0.8` to `11.0.0`.
+- **Dependencies**: Updated `Microsoft.NET.Test.Sdk` from `18.5.1` to `18.12.0`.
+- **Dependencies**: Updated `MVFC.Mediator` from `3.3.0` to `4.0.0`.
+- **Dependencies**: Updated `MVFC.Pack.Testing` from `4.0.0` to `4.0.2`.
+- **Dependencies**: Updated `MVFC.Pack.Analyzers` from `4.0.0` to `4.0.2`.
+- **Dependencies**: Updated `Google.Cloud.Storage.V1` from `4.14.0` to `5.0.0`.
+- **Dependencies**: Updated `Google.Cloud.PubSub.V1` from `3.34.0` to `3.39.0`.
+- **Dependencies**: Updated `Magick.NET-Q8-AnyCPU` from `14.16.0` to `15.1.0`.
+- **Dependencies**: Updated `Refit` and `Refit.HttpClientFactory` from `10.2.0` to `16.4.0`.
+- **Dependencies**: Updated `Microsoft.Extensions.Configuration.Binder` from `10.0.8` to `11.0.0`.
+- **Dependencies**: Updated `FluentValidation` from `12.1.1` to `12.2.0`.
+- **Dependencies**: Updated `Microsoft.Extensions.Http.Resilience` from `9.0.0` to `11.0.0`.
+- **Dependencies**: Updated `Microsoft.Extensions.Options.DataAnnotations` from `10.0.8` to `11.0.0`.
+- **Dependencies**: Updated `xunit.runner.visualstudio` from `3.1.5` to `4.0.1`.
+- **Dependencies**: Updated `xunit.v3` from `3.2.2` to `4.0.3`.
+- **IoC**: Replaced `Validator.ValidateObject` with `await Validator.ValidateObjectAsync` in all `App*Dependencies` classes (`AppAnalysisDependencies`, `AppConverterDependencies`, `AppDashboardDependencies`, `AppDeleteDependencies`, `AppThumbnailDependencies`, `AppUploadDependencies`) to ensure fully async startup validation.
+- **IoC**: Replaced `services.AddRefitClient<IVisionApiClient>()` with `services.AddRefitGeneratedClient<IVisionApiClient>()` in `AppAnalysisDependencies` to use Refit v16 source-generated clients.
+- **Code Quality**: Improved `Directory.Build.targets` condition from name-based string matching (`!$(MSBuildProjectName.Contains('Test'))`) to the standard MSBuild property (`'$(IsTestProject)' != 'true'`).
+
+### Removed
+
+- **Build**: Removed empty `CopyEditorConfigToSolutionRoot` target from `Directory.Build.targets`.
+- **Dependencies**: Removed `Microsoft.Extensions.Configuration.Abstractions` from `MVFC.Image.Infra` and `MVFC.Image.IoC` projects (no longer needed directly).
+- **Dependencies**: Removed `Microsoft.Extensions.Logging.Abstractions` from `Directory.Packages.props` and `MVFC.Image.Shareable.csproj` (transitively provided by the framework).
+
+---
+
 ## [2.9.0] - 2026-08-24
 
 ### Added
@@ -46,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [2.7.0] - 2026-05-26
+
+### Added
 
 - **Architecture**: Added `analysis-completed-topic` Pub/Sub topic and `mvfc-dashboard-analysis-sub` push subscription so the Dashboard is notified when AI analysis finishes.
 - **Domain**: Created `AnalysisCompletedRequest` record in `MVFC.Image.Shareable.Requests` representing the AI analysis completion event.
@@ -221,6 +260,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `MA0004` (ConfigureAwait) analyzer errors breaking Docker builds by correctly including `.editorconfig` in the Docker build context.
 
 ---
+
 ## [1.0.0] - 2026-05-17
 
 ### Added
@@ -239,6 +279,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[3.0.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v3.0.0
 [2.9.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.9.0
 [2.8.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.8.0
 [2.7.0]: https://github.com/Marcus-V-Freitas/MVFC.ImageProcessing/releases/tag/v2.7.0

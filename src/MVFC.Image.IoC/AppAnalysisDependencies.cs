@@ -5,7 +5,7 @@ public static class AppAnalysisDependencies
     public static async Task RegisterAnalysisServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
         var appConfig = configuration.GetRequiredConfig<AppConfigAnalysis>();
-        Validator.ValidateObject(appConfig, new ValidationContext(appConfig), validateAllProperties: true);
+        await Validator.ValidateObjectAsync(appConfig, new ValidationContext(appConfig), validateAllProperties: true);
 
         services.AddSingleton(appConfig);
         services.AddSingleton(Options.Create(appConfig));
@@ -13,7 +13,7 @@ public static class AppAnalysisDependencies
         services.AddMediatorSpecificHandlers(typeof(ImageAnalysisHandler));
         await services.AddStorageServiceDependenciesAsync();
 
-        services.AddRefitClient<IVisionApiClient>()
+        services.AddRefitGeneratedClient<IVisionApiClient>()
                 .ConfigureHttpClient((sp, c) =>
                 {
                     var appConfig = sp.GetRequiredService<AppConfigAnalysis>();

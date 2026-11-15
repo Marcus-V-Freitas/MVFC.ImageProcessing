@@ -5,7 +5,7 @@ public static class AppUploadDependencies
     public static async Task RegisterUploadServicesAsync(this IServiceCollection services, IConfiguration configuration)
     {
         var appConfig = configuration.GetRequiredConfig<AppConfigUpload>();
-        Validator.ValidateObject(appConfig, new ValidationContext(appConfig), validateAllProperties: true);
+        await Validator.ValidateObjectAsync(appConfig, new ValidationContext(appConfig), validateAllProperties: true);
 
         services.AddSingleton(appConfig);
         services.AddSingleton(Options.Create(appConfig));
